@@ -1,10 +1,10 @@
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
-from scipy.stats import moment
+from statsmodels.distributions.empirical_distribution import ECDF 
 from sklearn.neighbors import KernelDensity
 import matplotlib.pyplot as plt
-import random
+
 
 def get_bounded_distribution():
     bounded_distributions = {
@@ -48,7 +48,7 @@ def get_moments_df(distributions_dict, nr_moments, nr_sample, s_size):
         m1.extend(np.mean(samples, axis=1)) # first moment
 
         for j in range(2,nr_moments+2): #calculate from 2nd moment
-            x[j-2,:] = moment(samples, j, axis=1)
+            x[j-2,:] = stats.moment(samples, j, axis=1)
 
         df_per_dist = pd.DataFrame(np.transpose(x))
         df_per_dist['dist'] = name
@@ -60,19 +60,19 @@ def get_moments_df(distributions_dict, nr_moments, nr_sample, s_size):
     return final_df 
 
 
-def get_kde_estimates(distributions_dict, nr_sample, s_size, x_values):
+def get_kde_estimates(distributions_dict, nr_sample, s_size, x_values, bandwidth):
     df = pd.DataFrame()
     for i, (name, distr) in enumerate(distributions_dict.items()):
         y_estimates = list()
-        samples = distr.rvs(size=(5, 500), random_state=10)
+        samples = distr.rvs(size=(nr_sample, s_size), random_state=10)
 
-        for j in range(5):
+        for j in range(nr_sample):
             X = samples[j,:]
             X = X.reshape((len(X),1))
 
-            kde = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(X)
+            kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(X)
 
-            values = np.asarray(np.linspace(0,1,20))
+            values = np.asarray(np.linspace(0,1,x_values))
             values = values.reshape((len(values),1))
 
             log_density = kde.score_samples(values)
@@ -84,3 +84,19 @@ def get_kde_estimates(distributions_dict, nr_sample, s_size, x_values):
         df = pd.concat([df,df_per_dist], ignore_index=True)
 
     return df 
+
+
+def get_edf(distributions_dict, nr_sample, s_size):
+    df = pd.DataFrame()
+    for i, (name, distr) in enumerate(distributions_dict.items()):
+        x_values = list()
+        samples = distr.rvs(size=(s_size, nr_sample), random_state=10)
+        for j in range(nr_sample):
+            ecdf= ECDF(samples[:,j])
+            x_values.append(ecdf.x)
+
+        df_per_dist = pd.DataFrame(x_values)
+        df_per_dist['dist'] = name
+
+        df = pd.concat([df, df_per_dist], ignore_index = True)
+    return df   
