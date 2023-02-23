@@ -15,7 +15,8 @@ def get_default_plt_colors():
 ##################################
 
 def get_moments_df(samples_dict, nr_moments):
-    # 
+    # samples_dict: a dictionary containing samples of different distribution including preselected parameters
+    # nr_moments: desired number of moments to be calculated
     m1 = list()
     df = pd.DataFrame()
 
@@ -53,6 +54,8 @@ def get_histogram_of_moments(df):
 ##################################
 
 def get_kde(samples_dict, x):
+    # samples_dict: a dictinary containing samples from different distribution including preselected parameters
+    # x: array to calculate empirical cdf for it's values
     df = pd.DataFrame()
     for i, (name, samples) in enumerate(samples_dict.items()):
         nr_sample = samples.shape[0]
@@ -72,7 +75,7 @@ def get_kde(samples_dict, x):
 
 
 # this works only for bounded dists
-def get_kde_plot(kde_df, nr_sample, sample_size, x):
+def get_kde_plot(kde_df, x):
     names = kde_df['dist'].unique()
     for name in names:
         fig, ax = plt.subplots()
@@ -91,8 +94,6 @@ def get_kde_plot(kde_df, nr_sample, sample_size, x):
 
 def get_edf(samples_dict, x):
     # samples_dict: a dictinary containing samples from different distribution including preselected parameters
-    # nr_sample: number of samples
-    # sample size: size of each sample
     # x: array to calculate empirical cdf for it's values
 
     df = pd.DataFrame()  # empty dataframe to store empirical CDF
