@@ -10,7 +10,8 @@ from sklearn.ensemble import GradientBoostingClassifier
 
 
 def prepare_data(df, test_size):
-    X = df.drop([0,'dist'], axis=1)
+    #X = df.drop([0,'dist'], axis=1)
+    X = df.iloc[:, :-1]
     y = df['dist']
     
     # Scaling data
@@ -23,7 +24,7 @@ def prepare_data(df, test_size):
     return X, y, X_train, X_test, y_train, y_test
 
 
-def svm_model(df, test_size, cv):
+def svm_model(df, test_size, cv, plot=0):
     X, y, X_train, X_test, y_train, y_test = prepare_data(df, test_size)
     param_grid = [
         {'C':np.logspace(0,1,10),
@@ -37,14 +38,13 @@ def svm_model(df, test_size, cv):
     clf_svm = SVC(random_state=10, C=optimal_params.best_params_['C'], gamma=optimal_params.best_params_['gamma'])
     clf_svm.fit(X_train, y_train)
 
-    y_pred = clf_svm.predict(X_test)
-    c_matrix = confusion_matrix(y_test, y_pred)
-
-    disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_svm.classes_)
-    disp.plot(cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
-    plt.show()
+    if plot==1:
+        y_pred = clf_svm.predict(X_test)
+        c_matrix = confusion_matrix(y_test, y_pred)
+        disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_svm.classes_)
+        disp.plot(cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
+        plt.show()
     
     scores = cross_val_score(clf_svm, X_train, y_train, cv=cv)
-    accuracy = scores.mean()
   
-    return accuracy, scores
+    return scores
