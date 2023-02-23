@@ -10,7 +10,11 @@ from statsmodels.distributions.empirical_distribution import ECDF
 ##################################
 
 def get_moments_df(distributions_dict, nr_moments, nr_sample, sample_size):
-    # 
+    # distribution dict: a dictinary containing different distribution including preselected parameters
+    # nr_moments: desired number of moments to be calculated
+    # nr_sample: number of samples
+    # sample size: size of each sample
+
     m1 = list()
     x = np.zeros((nr_moments-1,nr_sample))
     df = pd.DataFrame()
