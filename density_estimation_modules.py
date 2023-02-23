@@ -5,111 +5,136 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
 from statsmodels.distributions.empirical_distribution import ECDF
 
+
+def get_default_plt_colors():
+    return plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+
 ##################################
 #        methods of moments      #
 ##################################
 
-def get_moments_df(distributions_dict, nr_moments, nr_sample, sample_size):
+def get_moments_df(samples_dict, nr_moments):
     # 
     m1 = list()
-    x = np.zeros((nr_moments-1,nr_sample))
     df = pd.DataFrame()
 
-    for i, (name, distr) in enumerate(distributions_dict.items()):
-        samples = distr.rvs(size=(nr_sample, sample_size), random_state=10)
-        m1.extend(np.mean(samples, axis=1)) # first moment
+    for i, (name, samples) in enumerate(samples_dict.items()):
+        nr_sample = samples.shape[0]
+        x = np.zeros((nr_moments - 1, nr_sample))
+        m1.extend(np.mean(samples, axis=1))  # first moment
 
-        for j in range(2,nr_moments+1): #calculate from 2nd moment
-            x[j-2,:] = stats.moment(samples, j, axis=1)
+        for j in range(2, nr_moments + 1):  # calculate from 2nd moment
+            x[j - 2, :] = stats.moment(samples, j, axis=1)
 
-        df_per_dist = pd.DataFrame(np.transpose(x), columns=['m'+str(i) for i in range(2,j+1)])
+        df_per_dist = pd.DataFrame(np.transpose(x), columns=['m' + str(i) for i in range(2, j + 1)])
         df_per_dist['dist'] = name
-        df = pd.concat([df,df_per_dist], ignore_index=True)
+        df = pd.concat([df, df_per_dist], ignore_index=True)
 
     m1_df = pd.DataFrame(m1, columns=['m1'])
-    final_df = pd.concat([m1_df,df], axis=1)
+    final_df = pd.concat([m1_df, df], axis=1)
 
-    return final_df 
+    return final_df
 
 
 def get_histogram_of_moments(df):
-    for i in range(len(df.columns)-1):
+    distrubtions = df['dist'].unique()
+    for moment_name in df.columns[:-1]:
         fig, ax = plt.subplots()
-        ax.hist(df.iloc[:,i], density=True, histtype='stepfilled', bins='auto')
-        plt.title('moment ' + str(i))
-        
+        for distr_name in distrubtions:
+            moments = df.loc[df['dist'] == distr_name, moment_name]
+            ax.hist(moments, density=True, histtype='stepfilled', bins='auto', alpha=0.75, label=distr_name)
+        plt.title('moment: ' + moment_name)
+        ax.legend()
+
 
 ##################################
 #    Kernel density estimation   #
 ##################################
 
-def get_kde(distributions_dict, nr_sample, sample_size, x):
+def get_kde(samples_dict, x):
     df = pd.DataFrame()
-    for i, (name, distr) in enumerate(distributions_dict.items()):
+    for i, (name, samples) in enumerate(samples_dict.items()):
+        nr_sample = samples.shape[0]
         y_estimates = list()
-        samples = distr.rvs(size=(nr_sample, sample_size), random_state=10)
 
         for j in range(nr_sample):
-            X = samples[j,:]
+            X = samples[j, :]
             kde = stats.gaussian_kde(X)
             values = x
             y_estimates.append(kde(values))
 
-        df_per_dist = pd.DataFrame(y_estimates)  
+        df_per_dist = pd.DataFrame(y_estimates)
         df_per_dist['dist'] = name
-        df = pd.concat([df,df_per_dist], ignore_index=True)
+        df = pd.concat([df, df_per_dist], ignore_index=True)
 
-    return df 
+    return df
 
-#this works only for bounded dists
-def get_kde_plot(distributions_dict, kde_df, nr_sample, sample_size, x):
-    for name,distr in (distributions_dict.items()):
+
+# this works only for bounded dists
+def get_kde_plot(kde_df, nr_sample, sample_size, x):
+    names = kde_df['dist'].unique()
+    for name in names:
         fig, ax = plt.subplots()
-        temp = kde_df.loc[kde_df['dist']==name]
+        temp = kde_df.loc[kde_df['dist'] == name]
         for i in range(len(x)):
             y = temp.iloc[i]
             dist_name = y[-1:][0]
             y = y[:-1]
             ax.plot(x, y, c='#1f77b4', alpha=0.4)
             ax.set_title(dist_name)
-            
+
 
 ##################################
 #  Empirical density estimation  #
 ##################################
 
-def get_edf(distributions_dict, nr_sample, sample_size, x):
-    # distribution dict: a dictinary containing different distribution including preselected parameters
+def get_edf(samples_dict, x):
+    # samples_dict: a dictinary containing samples from different distribution including preselected parameters
     # nr_sample: number of samples
     # sample size: size of each sample
     # x: array to calculate empirical cdf for it's values
-    
-    df = pd.DataFrame() # empty dataframe to store empirical CDF 
-    
-    for i, (name, distr) in enumerate(distributions_dict.items()): # iterate over each distribution
-        cum_p = list() # empty list to store cumulative probability
-        samples = distr.rvs(size=(nr_sample, sample_size), random_state=10) # get sample for each distribution
+
+    df = pd.DataFrame()  # empty dataframe to store empirical CDF
+
+    for i, (name, samples) in enumerate(samples_dict.items()):  # iterate over each distribution
+        nr_sample = samples.shape[0]
+        cum_p = list()  # empty list to store cumulative probability
         # iterate over each sample
         for j in range(nr_sample):
             ecdf = ECDF(samples[j])
-            cum_p.append(ecdf(x)) # append empirical CDF of values in x
-        
+            cum_p.append(ecdf(x))  # append empirical CDF of values in x
+
         df_per_dist = pd.DataFrame(cum_p)
         df_per_dist['dist'] = name
 
-        df = pd.concat([df, df_per_dist], ignore_index = True)
-    return df 
+        df = pd.concat([df, df_per_dist], ignore_index=True)
+    return df
 
 
-def get_edf_plot(distributions_dict, edf_df, nr_sample, sample_size, x):
-    for name,distr in (distributions_dict.items()):# iterate over each distribution
+def get_edf_plot(edf_df, x):
+    names = edf_df['dist'].unique()
+    for name in names:  # iterate over each distribution
         fig, ax = plt.subplots()
-        temp = edf_df.loc[edf_df['dist']==name]
+        temp = edf_df.loc[edf_df['dist'] == name]
+        nr_sample = temp.shape[0]
 
-        for i in range(nr_sample): # iterate over each sample
+        for i in range(nr_sample):  # iterate over each sample
             y = temp.iloc[i]
-            dist_name = y[-1:][0] 
-            y = y[:-1] # excluding  the last element which is the distribution name
+            dist_name = y[-1:][0]
+            y = y[:-1]  # excluding  the last element which is the distribution name
 
-            ax.plot(x, y, c='#1f77b4', alpha=0.4)  
+            ax.plot(x, y, c='#1f77b4', alpha=0.4)
             ax.set_title(dist_name)
+
+
+def get_edf_plot_ciwan(edf_df, x):
+    names = edf_df['dist'].unique()
+    fig, ax = plt.subplots()
+    colors = get_default_plt_colors()
+    handles = []
+    for name, color in zip(names, colors):  # iterate over each distribution
+        temp = edf_df.loc[edf_df['dist'] == name].iloc[:, :-1].to_numpy()
+        hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
+        handles.append(hh[0] if isinstance(hh, list) else hh)
+    ax.legend(handles=handles)
