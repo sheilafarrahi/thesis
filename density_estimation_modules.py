@@ -65,17 +65,42 @@ def get_kde(distributions_dict, nr_sample, sample_size, x):
 
     return df 
 
+def get_kde_l(distributions_dict, nr_sample, sample_size, x, bandwidth):
+    df = pd.DataFrame()
+    for i, (name, distr) in enumerate(distributions_dict.items()):
+        y_estimates = list()
+        samples = distr.rvs(size=(nr_sample, sample_size), random_state=10)
+
+        for j in range(nr_sample):
+            X = samples[j,:]
+            X = X.reshape((len(X),1))
+
+            kde = KernelDensity(kernel='gaussian', bandwidth=bandwidth).fit(X)
+
+            x = x.reshape((len(x),1))
+            log_density = kde.score_samples(x)
+            y_estimates.append(np.exp(log_density))
+
+        df_per_dist = pd.DataFrame(y_estimates)  
+        df_per_dist['dist'] = name
+
+        df = pd.concat([df,df_per_dist], ignore_index=True)
+
+    return df 
+
 #this works only for bounded dists
 def get_kde_plot(distributions_dict, kde_df, nr_sample, sample_size, x):
     for name,distr in (distributions_dict.items()):
         fig, ax = plt.subplots()
         temp = kde_df.loc[kde_df['dist']==name]
-        for i in range(len(x)):
+        for i in range(nr_sample):
             y = temp.iloc[i]
-            dist_name = y[-1:][0]
+            dist_name = y['dist']
             y = y[:-1]
             ax.plot(x, y, c='#1f77b4', alpha=0.4)
             ax.set_title(dist_name)
+            #plt.ylim(0,2.75)
+            
             
 
 ##################################
