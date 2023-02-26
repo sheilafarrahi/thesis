@@ -31,3 +31,13 @@ def plot_histograms_of_samples(distributions_dict, sample_size, nr_sample):
         samples = distr.rvs(size=(sample_size, nr_sample), random_state=10)
         ax.hist(samples, density=True, histtype='stepfilled', bins='auto', label=name, alpha=0.1)
         ax.legend()
+        
+def get_samples(distributions_dict, nr_sample, sample_size, random_state=10):
+    # distributions_dict: a dictinary containing different distribution including preselected parameters
+    # nr_sample: number of samples
+    # sample size: size of each sample
+    samples_dict = dict()
+    for i, (name, distr) in enumerate(distributions_dict.items()):
+        samples = distr.rvs(size=(nr_sample, sample_size), random_state=random_state)
+        samples_dict[name] = samples
+    return samples_dict
