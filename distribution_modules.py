@@ -15,22 +15,15 @@ def get_bounded_distribution():
     return bounded_distributions
 
 
-def get_longtail_distribution():
-    longtail_distributions = {
+def get_heavytail_distribution():
+    heavytail_distributions = {
         "cauchy" : stats.halfcauchy(),
         "lognorm_1.5" : stats.lognorm(s=1.5),
         "pareto_1.5" : stats.pareto(b=1.5),
         "weibull_min_0.4" : stats.weibull_min(c=0.4)
     }
-    return longtail_distributions
-        
+    return heavytail_distributions
 
-def plot_histograms_of_samples(distributions_dict, sample_size, nr_sample):
-    for i, (name, distr) in enumerate(distributions_dict.items()):
-        fig, ax = plt.subplots()
-        samples = distr.rvs(size=(sample_size, nr_sample), random_state=10)
-        ax.hist(samples, density=True, histtype='stepfilled', bins='auto', label=name, alpha=0.1)
-        ax.legend()
         
 def get_samples(distributions_dict, nr_sample, sample_size, random_state=10):
     # distributions_dict: a dictinary containing different distribution including preselected parameters
@@ -41,3 +34,10 @@ def get_samples(distributions_dict, nr_sample, sample_size, random_state=10):
         samples = distr.rvs(size=(nr_sample, sample_size), random_state=random_state)
         samples_dict[name] = samples
     return samples_dict
+
+
+def plot_histograms_of_samples(samples_dict):
+    for i, (name, samples) in enumerate(samples_dict.items()):
+        fig, ax = plt.subplots()
+        ax.hist(samples, density=True, histtype='stepfilled', bins='auto', label=name, alpha=0.1)
+        ax.legend()

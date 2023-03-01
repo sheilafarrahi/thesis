@@ -71,42 +71,17 @@ def get_kde(samples_dict, x):
 
     return df 
 
-
-def get_kde_l(distributions_dict, nr_sample, sample_size, x, bandwidth):
-    df = pd.DataFrame()
-    for i, (name, distr) in enumerate(distributions_dict.items()):
-        y_estimates = list()
-        samples = distr.rvs(size=(nr_sample, sample_size), random_state=10)
-
-        for j in range(nr_sample):
-            X = samples[j,:]
-            X = X.reshape((len(X),1))
-
-            kde = KernelDensity(kernel='epanechnikov', bandwidth=bandwidth).fit(X)
-
-            x = x.reshape((len(x),1))
-            log_density = kde.score_samples(x)
-            y_estimates.append(np.exp(log_density))
-
-        df_per_dist = pd.DataFrame(y_estimates)  
-        df_per_dist['dist'] = name
-
-        df = pd.concat([df,df_per_dist], ignore_index=True)
-
-    return df 
-            
-# this works only for bounded dists
-def get_kde_plot(kde_df, x):
-    names = kde_df['dist'].unique()
-    for name in names:
-        fig, ax = plt.subplots()
-        temp = kde_df.loc[kde_df['dist'] == name]
-        for i in range(len(x)):
-            y = temp.iloc[i]
-            dist_name = y[-1:][0]
-            y = y[:-1]
-            ax.plot(x, y, c='#1f77b4', alpha=0.4)
-            ax.set_title(dist_name)
+   
+def get_kde_plot(df, x):
+    names = df['dist'].unique()
+    fig, ax = plt.subplots()
+    colors = get_default_plt_colors()
+    handles = []
+    for name, color in zip(names, colors):  # iterate over each distribution
+        temp = df.loc[df['dist'] == name].iloc[:, :-1].to_numpy()
+        hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
+        handles.append(hh[0] if isinstance(hh, list) else hh)
+    ax.legend(handles=handles)
             
             
 
@@ -142,6 +117,18 @@ def get_edf_plot(edf_df, x):
     
     for name, color in zip(names, colors):  # iterate over each distribution
         temp = edf_df.loc[edf_df['dist'] == name].iloc[:, :-1].to_numpy()
+        hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
+        handles.append(hh[0] if isinstance(hh, list) else hh)
+    ax.legend(handles=handles)
+    
+    
+def get_edf_plot_2(df, x):
+    names = df['dist'].unique()
+    fig, ax = plt.subplots()
+    colors = get_default_plt_colors()
+    handles = []
+    for name, color in zip(names, colors):  # iterate over each distribution
+        temp = df.loc[df['dist'] == name].iloc[:, :-1].to_numpy()
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles)
