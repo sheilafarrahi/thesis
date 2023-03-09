@@ -7,9 +7,9 @@ from statsmodels.distributions.empirical_distribution import ECDF
 def get_default_plt_colors():
     return plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-##################################
-#        methods of moments      #
-##################################
+##########################################
+#            methods of moments          #
+##########################################
 
 def get_moments_df(samples_dict, nr_moments):
     # samples_dict: a dictionary containing samples of different distribution including preselected parameters
@@ -47,9 +47,9 @@ def get_histogram_of_moments(df):
         ax.legend()
         
 
-##################################
-#    Kernel density estimation   #
-##################################
+##########################################
+#        Kernel density estimation       #
+##########################################
 
 def get_kde(samples_dict, x):
     # samples_dict: a dictinary containing samples from different distribution including preselected parameters
@@ -85,9 +85,9 @@ def get_kde_plot(df, x):
             
             
 
-##################################
-#  Empirical density estimation  #
-##################################
+##########################################
+#      Empirical density estimation      #
+##########################################
 
 def get_edf(samples_dict, x):
     # samples_dict: a dictinary containing samples from different distribution including preselected parameters
@@ -123,6 +123,42 @@ def get_edf_plot(edf_df, x):
     
     
 def get_edf_plot_2(df, x):
+    names = df['dist'].unique()
+    fig, ax = plt.subplots()
+    colors = get_default_plt_colors()
+    handles = []
+    for name, color in zip(names, colors):  # iterate over each distribution
+        temp = df.loc[df['dist'] == name].iloc[:, :-1].to_numpy()
+        hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
+        handles.append(hh[0] if isinstance(hh, list) else hh)
+    ax.legend(handles=handles)
+    
+
+##########################################
+#  Empirical characteristics estimation  #
+##########################################
+
+def get_ecf(sample_dict, x):
+    # samples_dict: a dictinary containing samples from different distribution including preselected parameters
+    # x: array of frequencies to calculate empirical characteristic function for it's values
+    df = pd.DataFrame()
+    for i, (name, samples) in enumerate(sample_dict.items()):
+        nr_sample =samples.shape[0]
+        ecfs = list()
+
+        for j in range(nr_sample):
+            data = samples[j,:]
+            ecf = np.mean(np.exp(1j * np.outer(data, x)), axis=0)
+            ecf_real = np.real(ecf)
+            ecfs.append(ecf_real)
+
+        df_per_dist = pd.DataFrame(ecfs)
+        df_per_dist['dist'] = name
+        df = pd.concat([df, df_per_dist], ignore_index = True)
+        
+    return df
+
+def get_ecf_plot(df, x):
     names = df['dist'].unique()
     fig, ax = plt.subplots()
     colors = get_default_plt_colors()

@@ -35,7 +35,7 @@ def svm_model(df, test_size, cv, plot=0):
     optimal_params = GridSearchCV(SVC(), param_grid,cv=cv, verbose=0)
     optimal_params.fit(X_train, y_train)
 
-    clf_svm = SVC(random_state=10, C=optimal_params.best_params_['C'], gamma=optimal_params.best_params_['gamma'])
+    clf_svm = SVC(random_state=100, C=optimal_params.best_params_['C'], gamma=optimal_params.best_params_['gamma'])
     clf_svm.fit(X_train, y_train)
 
     if plot==1:
