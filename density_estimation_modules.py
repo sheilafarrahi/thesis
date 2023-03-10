@@ -150,6 +150,7 @@ def get_ecf(sample_dict, x):
             data = samples[j,:]
             ecf = np.mean(np.exp(1j * np.outer(data, x)), axis=0)
             ecf_real = np.real(ecf)
+            #edf_imaginary = np.imag(ecf)
             ecfs.append(ecf_real)
 
         df_per_dist = pd.DataFrame(ecfs)
