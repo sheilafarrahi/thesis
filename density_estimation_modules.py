@@ -7,6 +7,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 def get_default_plt_colors():
     return plt.rcParams['axes.prop_cycle'].by_key()['color']
 
+
 ##########################################
 #            methods of moments          #
 ##########################################
@@ -30,7 +31,7 @@ def get_moments_df(samples_dict, nr_moments):
         df_per_dist['dist'] = name
         df = pd.concat([df,df_per_dist], ignore_index=True)
 
-    m1_df = pd.DataFrame(m1, columns=['m1'])
+    m1_df = pd.DataFrame(m1, columns=['m1'])    
     final_df = pd.concat([m1_df,df], axis=1)
 
     return final_df 
@@ -53,7 +54,7 @@ def get_histogram_of_moments(df):
 
 def get_kde(samples_dict, x):
     # samples_dict: a dictinary containing samples from different distribution including preselected parameters
-    # x: array to calculate empirical cdf for it's values
+    # x: array to do kde
     df = pd.DataFrame()
     for i, (name, samples) in enumerate(samples_dict.items()):
         nr_sample = samples.shape[0]
@@ -138,34 +139,36 @@ def get_edf_plot_2(df, x):
 #  Empirical characteristics estimation  #
 ##########################################
 
-def get_ecf(sample_dict, x):
+def get_ecf(sample_dict, t):
     # samples_dict: a dictinary containing samples from different distribution including preselected parameters
-    # x: array of frequencies to calculate empirical characteristic function for it's values
+    # t : array of frequencies to calculate empirical characteristic function for it's values
     df = pd.DataFrame()
     for i, (name, samples) in enumerate(sample_dict.items()):
         nr_sample =samples.shape[0]
-        ecfs = list()
+        ecf_list = list()
 
         for j in range(nr_sample):
             data = samples[j,:]
-            ecf = np.mean(np.exp(1j * np.outer(data, x)), axis=0)
-            ecf_real = np.real(ecf)
-            #edf_imaginary = np.imag(ecf)
-            ecfs.append(ecf_real)
+            ecf = np.mean(np.exp(1j * np.outer(data, t)), axis=0)
+            ecf_r = np.real(ecf)
+            ecf_i = np.imag(ecf)
+            ecf_list.append(np.concatenate([ecf_r,ecf_i]))
 
-        df_per_dist = pd.DataFrame(ecfs)
+        df_per_dist = pd.DataFrame(ecf_list)
         df_per_dist['dist'] = name
         df = pd.concat([df, df_per_dist], ignore_index = True)
         
     return df
 
-def get_ecf_plot(df, x):
+
+def get_ecf_plot(df, t):
     names = df['dist'].unique()
     fig, ax = plt.subplots()
     colors = get_default_plt_colors()
     handles = []
     for name, color in zip(names, colors):  # iterate over each distribution
-        temp = df.loc[df['dist'] == name].iloc[:, :-1].to_numpy()
-        hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
+        r_part = df.loc[df['dist'] == name].iloc[:,0:len(t)]
+        i_part = df.loc[df['dist'] == name].iloc[:,len(t):-1]
+        hh = ax.plot(r_part.T, i_part.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles)

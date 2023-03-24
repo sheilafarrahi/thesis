@@ -9,6 +9,8 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.ensemble import GradientBoostingClassifier
 
 
+
+
 def prepare_data(df, test_size):
     #X = df.drop([0,'dist'], axis=1)
     X = df.iloc[:, :-1]
@@ -20,7 +22,7 @@ def prepare_data(df, test_size):
     X_scaled = scaler.transform(X)
 
     # train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size = test_size, random_state=10)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size = test_size, stratify = y, random_state=10)
     return X, y, X_train, X_test, y_train, y_test
 
 
@@ -49,23 +51,3 @@ def svm_model(df, test_size, cv, plot=0):
     return scores
 
 
-def cv_svm_moments_samples(distributions_dict, nr_sample_list, nr_moments_list):
-    acc_mean = [] # list to keep track of acc
-    acc_std = []
-
-    for i in nr_sample_list:
-        acc_mean_i = [] 
-        acc_std_i = []
-        for j in nr_moments_list:
-            heavytail_samples = dm.get_samples(distributions_dict, i, sample_size)
-            transformed_sampels = dict()
-            for name, samples in heavytail_samples.items():
-                transformed_sampels[name] = np.log1p(samples)
-
-            moments_df = dem.get_moments_df(transformed_sampels, j)
-            score = cm.svm_model(moments_df, test_size, cv)
-            acc_mean_i.append(score.mean())
-            acc_std_i.append(score.std())
-        acc_mean.append(acc_mean_i)
-        acc_std.append(acc_std_i)
-    return acc_mean, acc_std
