@@ -112,3 +112,40 @@ def cv_num_steps_step_size(step_size_list, num_steps_list, dists, sample_config,
         ax.legend(loc='center right', bbox_to_anchor=(1.2, 0.5), title='number of steps')
     plt.show()
     return acc
+
+
+def cv_moments_sample_size(sample_size_list, nr_moments_list, dists, nr_sample, cv_config, classifier):
+    # sample_size_list: list of different sample sizes to test
+    # nr_moments_list: list of different number of moments to test
+    # dists: 
+    # nr_sample: 
+    # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
+    # classifier: integer value, 1: svm, 2: Ridge Regression
+    
+    acc = list()
+    for i in tqdm(sample_size_list, desc='% completed'):
+        samples = dm.get_samples(dists, nr_sample, i)
+        acc_ = [] 
+
+        for j in nr_moments_list:
+            df = dem.get_moments_df(samples, j)
+            if classifier == 1:
+                score = svm_model(df,cv_config[0], cv_config[1])
+            elif classifier == 2:
+                score = rr_model(df,cv_config[0], cv_config[1])
+            acc_.append(score.mean())
+
+        acc.append(acc_)
+        sleep(0.1)
+        
+    # plot
+    plt.figure(figsize=(10, 8))
+    for i in range(len(acc)):
+        plt.plot(nr_moments_list, acc[i], label=str(sample_size_list[i]), alpha = 0.5)
+        plt.title('accuracy for diffrent sample size and moments')
+        plt.xlabel('number of moments')
+        plt.ylabel('accuracy')
+        plt.legend(loc='center right', bbox_to_anchor=(1.2, 0.5), title='sample size')
+        plt.xticks(np.arange(min(nr_moments_list), max(nr_moments_list)+1, 1.0))
+    plt.show()
+    return acc
