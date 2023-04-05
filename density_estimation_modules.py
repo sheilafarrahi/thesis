@@ -12,40 +12,34 @@ def get_default_plt_colors():
 #            methods of moments          #
 ##########################################
 
-def get_moments_df(samples_dict, nr_moments):
+def get_moments_df(data, nr_moments):
     # samples_dict: a dictionary containing samples of different distribution including preselected parameters
     # nr_moments: desired number of moments to be calculated
-
-    m1 = list()
     df = pd.DataFrame()
+    x = np.zeros((len(data), nr_moments - 1))
     
-    for i, (name, samples) in enumerate(samples_dict.items()):
-        nr_sample = samples.shape[0]
-        x = np.zeros((nr_moments - 1, nr_sample))
-        m1.extend(np.mean(samples, axis=1))  # first moment
+    m1 = np.mean(data.iloc[:,:-1], axis=1)
+    m1_df = pd.DataFrame(m1, columns=['m1']) 
+    
+    for i in range(2,nr_moments+1): #calculate from 2nd moment
+        x[:,i-2] = stats.moment(data.iloc[:,:-1], i, axis=1)
 
-        for j in range(2,nr_moments+1): #calculate from 2nd moment
-            x[j-2,:] = stats.moment(samples, j, axis=1)
-
-        df_per_dist = pd.DataFrame(np.transpose(x), columns=['m'+str(i) for i in range(2,j+1)])
-        df_per_dist['dist'] = name
-        df = pd.concat([df,df_per_dist], ignore_index=True)
-
-    m1_df = pd.DataFrame(m1, columns=['m1'])    
-    final_df = pd.concat([m1_df,df], axis=1)
-
-    return final_df 
+    x_df = pd.DataFrame(x, columns=['m'+str(j) for j in range(2,i+1)])
+    x_df['label'] = data.iloc[:,-1]
+    final_df = pd.concat([m1_df,x_df], axis=1)
+    
+    return final_df
 
 
 def get_histogram_of_moments(df):
-    distrubtions = df['dist'].unique()
+    labels = df.iloc[:,-1].unique()
     for moment_name in df.columns[:-1]:
         fig, ax = plt.subplots()
-        for distr_name in distrubtions:
-            moments = df.loc[df['dist'] == distr_name, moment_name]
-            ax.hist(moments, density=True, histtype='stepfilled', bins='auto', alpha=0.75, label=distr_name)
+        for label in labels:
+            moments = df.loc[df.iloc[:,-1] == label, moment_name]
+            ax.hist(moments, density=True, histtype='stepfilled', bins='auto', alpha=0.75, label=label)
         plt.title('moment: ' + moment_name)
-        ax.legend()
+        ax.legend(loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
         
 
 ##########################################
@@ -74,12 +68,12 @@ def get_kde(samples_dict, x):
 
    
 def get_kde_plot(df, x):
-    names = df['dist'].unique()
+    names = df.iloc[:,-1].unique()
     fig, ax = plt.subplots()
     colors = get_default_plt_colors()
     handles = []
     for name, color in zip(names, colors):  # iterate over each distribution
-        temp = df.loc[df['dist'] == name].iloc[:, :-1].to_numpy()
+        temp = df.loc[df['label'] == name].iloc[:, :-1].to_numpy()
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles)
