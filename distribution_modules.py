@@ -25,7 +25,7 @@ def get_heavytail_distribution():
     return heavytail_distributions
 
         
-def get_samples(distributions_dict, nr_sample, sample_size, random_state=10):
+def get_samples(distributions_dict, nr_sample, sample_size, random_state=10, transform=False):
     # distributions_dict: a dictinary containing different distribution including preselected parameters
     # nr_sample: number of samples
     # sample size: size of each sample
@@ -33,6 +33,13 @@ def get_samples(distributions_dict, nr_sample, sample_size, random_state=10):
     for i, (name, distr) in enumerate(distributions_dict.items()):
         samples = distr.rvs(size=(nr_sample, sample_size), random_state=random_state)
         samples_dict[name] = samples
+        
+    if transform == True:
+        transformed_sampels = dict()
+        for name, samples in samples_dict.items():
+            transformed_sampels[name] = np.log1p(samples)
+        samples_dict = transformed_sampels        
+    
     return samples_dict
 
 

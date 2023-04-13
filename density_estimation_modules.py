@@ -33,11 +33,19 @@ def get_moments_df(data, nr_moments):
 
 def get_histogram_of_moments(df):
     labels = df.iloc[:,-1].unique()
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', 
+              '#bcbd22', '#17becf', '#393b79', '#637939', '#8c6d31', '#d6616b', '#7b4173', '#ce6dbd', 
+              '#5254a3', '#8ca252', '#bd9e39', '#ad494a', '#8c8c8c', '#9c9ede', '#cedb9c', '#e7cb94', 
+              '#e7969c', '#b5cf6b', '#a55194', '#de9ed6', '#3182bd', '#6baed6', '#9ecae1', '#c6dbef', 
+              '#e6550d', '#fd8d3c', '#fdae6b', '#fdd0a2', '#74c476', '#9e9ac8', '#e41a1c', '#377eb8']
+
     for moment_name in df.columns[:-1]:
+        i = 0
         fig, ax = plt.subplots()
         for label in labels:
             moments = df.loc[df.iloc[:,-1] == label, moment_name]
-            ax.hist(moments, density=True, histtype='stepfilled', bins='auto', alpha=0.75, label=label)
+            ax.hist(moments, density=True, histtype='stepfilled', color = colors[i], bins='auto', alpha=0.75, label=label)
+            i=i+1
         plt.title('moment: ' + moment_name)
         ax.legend(loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
         
@@ -46,23 +54,20 @@ def get_histogram_of_moments(df):
 #        Kernel density estimation       #
 ##########################################
 
-def get_kde(samples_dict, x):
-    # samples_dict: a dictinary containing samples from different distribution including preselected parameters
+def get_kde(data, x):
+    # data: graphwave data
     # x: array to do kde
     df = pd.DataFrame()
-    for i, (name, samples) in enumerate(samples_dict.items()):
-        nr_sample = samples.shape[0]
-        y_estimates = list()
+    y_estimates = list()
 
-        for j in range(nr_sample):
-            X = samples[j,:]
-            kde = stats.gaussian_kde(X)
-            values = x
-            y_estimates.append(kde(values))
+    for i in range(len(data)):
+        X = data.iloc[i,:-1]
+        kde = stats.gaussian_kde(list(X))
+        values = x
+        y_estimates.append(kde(values))
 
-        df_per_dist = pd.DataFrame(y_estimates)  
-        df_per_dist['dist'] = name
-        df = pd.concat([df,df_per_dist], ignore_index=True)
+    df = pd.DataFrame(y_estimates)  
+    df['label'] = data.iloc[:,-1]
 
     return df 
 
@@ -70,65 +75,55 @@ def get_kde(samples_dict, x):
 def get_kde_plot(df, x):
     names = df.iloc[:,-1].unique()
     fig, ax = plt.subplots()
-    colors = get_default_plt_colors()
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', 
+              '#bcbd22', '#17becf', '#393b79', '#637939', '#8c6d31', '#d6616b', '#7b4173', '#ce6dbd', 
+              '#5254a3', '#8ca252', '#bd9e39', '#ad494a', '#8c8c8c', '#9c9ede', '#cedb9c', '#e7cb94', 
+              '#e7969c', '#b5cf6b', '#a55194', '#de9ed6', '#3182bd', '#6baed6', '#9ecae1', '#c6dbef', 
+              '#e6550d', '#fd8d3c', '#fdae6b', '#fdd0a2', '#74c476', '#9e9ac8', '#e41a1c', '#377eb8']
     handles = []
-    for name, color in zip(names, colors):  # iterate over each distribution
+    for name, color in zip(names, colors):
         temp = df.loc[df['label'] == name].iloc[:, :-1].to_numpy()
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
-    ax.legend(handles=handles)
-            
+    ax.legend(handles=handles, loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
             
 
 ##########################################
 #      Empirical density estimation      #
 ##########################################
 
-def get_edf(samples_dict, x):
-    # samples_dict: a dictinary containing samples from different distribution including preselected parameters
+def get_edf(data, x):
+    # data: graphwave data
     # x: array to calculate empirical cdf for it's values
-    df = pd.DataFrame() # empty dataframe to store empirical CDF 
-    
-    for i, (name, samples) in enumerate(samples_dict.items()):  # iterate over each distribution
-        nr_sample = samples.shape[0]
-        cum_p = list() # empty list to store cumulative probability
-        
-        for j in range(nr_sample): # iterate over each sample
-            ecdf = ECDF(samples[j])
-            cum_p.append(ecdf(x)) # append empirical CDF of values in x
-        
-        df_per_dist = pd.DataFrame(cum_p)
-        df_per_dist['dist'] = name
+    df = pd.DataFrame() # empty eddataframe to store empirical CDF 
+    cum_p = list()  # empty list to store cumulative probability
 
-        df = pd.concat([df, df_per_dist], ignore_index = True)
+    for i in range(len(data)):
+        ecdf = ECDF(data.iloc[i,:-1])
+        cum_p.append(ecdf(x)) # append empirical CDF of values in x
+
+    df = pd.DataFrame(cum_p)
+    df['label'] = data.iloc[:,-1]
     return df 
 
 
-def get_edf_plot(edf_df, x):
-    names = edf_df['dist'].unique()
+def get_edf_plot(df, x):
+    names = df.iloc[:,-1].unique()
     fig, ax = plt.subplots()
-    colors = get_default_plt_colors()
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', 
+              '#bcbd22', '#17becf', '#393b79', '#637939', '#8c6d31', '#d6616b', '#7b4173', '#ce6dbd', 
+              '#5254a3', '#8ca252', '#bd9e39', '#ad494a', '#8c8c8c', '#9c9ede', '#cedb9c', '#e7cb94', 
+              '#e7969c', '#b5cf6b', '#a55194', '#de9ed6', '#3182bd', '#6baed6', '#9ecae1', '#c6dbef', 
+              '#e6550d', '#fd8d3c', '#fdae6b', '#fdd0a2', '#74c476', '#9e9ac8', '#e41a1c', '#377eb8']
     handles = []
-    
-    for name, color in zip(names, colors):  # iterate over each distribution
-        temp = edf_df.loc[edf_df['dist'] == name].iloc[:, :-1].to_numpy()
+    for name, color in zip(names, colors):
+        temp = df.loc[df['label'] == name].iloc[:, :-1].to_numpy()
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
+    ax.legend(handles=handles, loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
     ax.legend(handles=handles)
     
     
-def get_edf_plot_2(df, x):
-    names = df['dist'].unique()
-    fig, ax = plt.subplots()
-    colors = get_default_plt_colors()
-    handles = []
-    for name, color in zip(names, colors):  # iterate over each distribution
-        temp = df.loc[df['dist'] == name].iloc[:, :-1].to_numpy()
-        hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
-        handles.append(hh[0] if isinstance(hh, list) else hh)
-    ax.legend(handles=handles)
-    
-
 ##########################################
 #  Empirical characteristics estimation  #
 ##########################################
