@@ -39,10 +39,16 @@ def get_samples(distributions_dict, nr_sample, sample_size, random_state=10, tra
         for name, samples in samples_dict.items():
             transformed_sampels[name] = np.log1p(samples)
         samples_dict = transformed_sampels
+
+    df = pd.DataFrame()
+    for i, (name, samples) in enumerate(samples_dict.items()):
+        df_sample = pd.DataFrame(samples)
+        df_sample['label'] = name
+        df = df.append(df_sample, ignore_index=True)
         
-    return samples_dict
+    return df
 
-
+# dont check this
 def plot_histograms_of_samples(samples_dict):
     for i, (name, samples) in enumerate(samples_dict.items()):
         fig, ax = plt.subplots()
