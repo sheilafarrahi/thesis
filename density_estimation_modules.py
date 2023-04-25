@@ -11,7 +11,6 @@ def get_default_plt_colors():
 ##########################################
 #            methods of moments          #
 ##########################################
-
 def get_moments(data, nr_moments):
     # samples_dict: a dictionary containing samples of different distribution including preselected parameters
     # nr_moments: desired number of moments to be calculated
@@ -49,11 +48,9 @@ def get_histogram_of_moments(df):
         plt.title('moment: ' + moment_name)
         ax.legend(loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
         
-
 ##########################################
 #        Kernel density estimation       #
 ##########################################
-
 def get_kde(data, x):
     # data: graphwave data
     # x: array to do kde
@@ -86,12 +83,10 @@ def get_kde_plot(df, x):
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles, loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
-            
 
 ##########################################
 #      Empirical density estimation      #
 ##########################################
-
 def get_edf(data, x):
     # data: graphwave data
     # x: array to calculate empirical cdf for it's values
@@ -119,12 +114,10 @@ def get_edf_plot(df, x):
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles, loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
-    
-    
+       
 ##########################################
 #  Empirical characteristics estimation  #
 ##########################################
-
 def get_ecf(data, t):
     # data: graphwave data
     # t : array of frequencies to calculate empirical characteristic function for it's values
@@ -156,7 +149,9 @@ def get_ecf_plot(df, t):
         i_part = df.loc[df['label'] == name].iloc[:,len(t):-1]
         hh = ax.plot(r_part.T, i_part.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
-    ax.legend(handles=handles, loc='center right', bbox_to_anchor=(1.75, 0.5), ncol=3)
+    ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1.7, 1), ncol=3)
+    plt.xlabel('Real Part')
+    plt.ylabel('Imaginary Part')
     
     
     

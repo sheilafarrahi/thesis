@@ -55,9 +55,9 @@ def gbm_model(test_data, train_data, gbm_config, cv_config, plot=0):
     f1 = cross_val_score(clf_gbm, X_train, encoded_y_train, cv=cv_config[1], scoring='f1_macro')
     return f1
 
-
-
-
+#######################################################
+#                         SVM                         #
+#######################################################
 
 def svm_model(test_data, train_data, cv_config, plot=0):
     X, y, X_train, X_test, y_train, y_test = prepare_data(test_data, train_data)
@@ -73,48 +73,18 @@ def svm_model(test_data, train_data, cv_config, plot=0):
     gamma = optimal_params.best_params_['gamma']
     clf_svm = SVC(random_state=100, C=cost, gamma=gamma, class_weight = 'balanced')
     clf_svm.fit(X_train, y_train)
-    y_pred = clf_svm.predict(X_test)
     
     if plot==1:
+        y_pred = clf_svm.predict(X_test)
         c_matrix = confusion_matrix(y_test, y_pred)
         disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_svm.classes_)
         fig, ax = plt.subplots(figsize=(10,10))
         disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
         plt.show()
 
-    f1 = cross_val_score(clf_svm, X_train, y_train, cv=cv_config[1], scoring='f1_macro')
+    f1 = cross_val_score(clf_svm, X_test, y_test, cv=cv_config[1], scoring='f1_macro')
     return f1, cost, gamma
 
-def svm_given_params(test_data, train_data, method, method_param, cost, gamma, plot=0):
-    if method == 1:
-        test_ = dem.get_moments(test_data, method_param)
-        train_ = dem.get_moments(train_data, method_param)
-    elif method == 2:
-        x = np.linspace(0,1,method_param)
-        test_ = dem.get_kde(test_data, x)
-        train_ = dem.get_kde(train_data, x)
-    elif method == 3:
-        x = np.linspace(0,1,method_param)
-        test_ = dem.get_edf(test_data, x)
-        train_ = dem.get_edf(train_data, x)
-    elif method == 4:
-        test_ = dem.get_ecf(test_data, x)
-        train_ = dem.get_ecf(train_data, x)
-    
-    X, y, X_train, X_test, y_train, y_test = prepare_data(test_, train_)
-    clf_svm = SVC(random_state=100, C=cost, gamma=gamma, class_weight = 'balanced')
-    clf_svm.fit(X_train, y_train)
-    y_pred = clf_svm.predict(X_test)
-    
-    if plot==1:
-        c_matrix = confusion_matrix(y_test, y_pred)
-        disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_svm.classes_)
-        fig, ax = plt.subplots(figsize=(10,10))
-        disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
-        plt.show()
-
-    f1 = f1_score(y_test, y_pred, average='macro')
-    return f1
 
 #######################################################
 #                  Logistic Regression                #
@@ -124,51 +94,19 @@ def lr_model(test_data, train_data, cv_config, plot=0):
     alphas = np.logspace(0,20,50)
     clf_lr = RidgeClassifierCV(alphas, class_weight = 'balanced')
     clf_lr.fit(X_train, y_train)
-    y_pred = clf_lr.predict(X_test)
     
     if plot==1:
+        y_pred = clf_lr.predict(X_test)
         c_matrix = confusion_matrix(y_test, y_pred)
         disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_lr.classes_)
         fig, ax = plt.subplots(figsize=(10,10))
         disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
         plt.show()
     
-    f1 =  cross_val_score(clf_lr, X_train, y_train, cv=cv_config[1], scoring='f1_macro')
+    f1 =  cross_val_score(clf_lr, X_test, y_test, cv=cv_config[1], scoring='f1_macro')
     alpha = clf_lr.alpha_
     return f1, alpha
 
-
-def lr_given_params(test_data, train_data, method, method_param, alpha, plot=0):
-    # method: 1:moments, 2:kde, 3:edf, 4: ecf
-    if method == 1:
-        test_ = dem.get_moments(test_data, method_param)
-        train_ = dem.get_moments(train_data, method_param)
-    elif method == 2:
-        x = np.linspace(0,1,method_param)
-        test_ = dem.get_kde(test_data, x)
-        train_ = dem.get_kde(train_data, x)
-    elif method == 3:
-        x = np.linspace(0,1,method_param)
-        test_ = dem.get_edf(test_data, x)
-        train_ = dem.get_edf(train_data, x)
-    elif method == 4:
-        test_ = dem.get_ecf(test_data, x)
-        train_ = dem.get_ecf(train_data, x)
-    
-    X, y, X_train, X_test, y_train, y_test = prepare_data(test_, train_)
-    clf_lr = RidgeClassifierCV(alpha, class_weight = 'balanced')
-    clf_lr.fit(X_train, y_train)
-    y_pred = clf_lr.predict(X_test)
-    
-    if plot==1:
-        c_matrix = confusion_matrix(y_test, y_pred)
-        disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_lr.classes_)
-        fig, ax = plt.subplots(figsize=(10,10))
-        disp.plot(ax=ax, cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
-        plt.show()
-    
-    f1 = f1_score(y_test, y_pred, average='macro')
-    return f1
 
 ###################################################
 #      cross validation for number of moments     #
@@ -201,7 +139,7 @@ def cv_moments(nr_moments_list, test_data, train_data, cv_config, classifier):
     return result
 
 
-def plot_cv_moments(svm_result, lr_result, errbar=0):
+def plot_cv_moments(svm_result, lr_result):
     # clf_result is an output dict from classification that includes:
         # nr_moments: list of different number of moments to test
         # acc: list of accuracy
@@ -209,19 +147,24 @@ def plot_cv_moments(svm_result, lr_result, errbar=0):
         # cost
         # gamma
         # alpha
-    # errbar: 1 if error bar should be included, 0 otherwise
     fig, ax = plt.subplots()
-    if errbar == 0 :
-        plt.plot(svm_result['nr_moments'], svm_result['f1'], label = 'svm')
-        plt.plot(lr_result['nr_moments'], lr_result['f1'], label = 'Logistic Regression')
-    elif errbar == 1:
-        ax.errorbar(svm_result['nr_moments'], svm_result['f1'], yerr= svm_result['std'], capsize=4, label = 'svm')
-        ax.errorbar(lr_result['nr_moments'], lr_result['f1'], yerr= lr_result['std'], capsize=4, label = 'Logistic Regression')
+    plt.plot(svm_result['nr_moments'], svm_result['f1'], label = 'svm')
+    plt.gca().fill_between(svm_result['nr_moments'], 
+                           [i-j for i,j in zip(svm_result['f1'], svm_result['std'])], 
+                           [i+j for i,j in zip(svm_result['f1'], svm_result['std'])],
+                           alpha=0.1) 
+        
+    plt.plot(lr_result['nr_moments'], lr_result['f1'], label = 'Logistic Regression')
+    plt.gca().fill_between(lr_result['nr_moments'], 
+                           [i-j for i,j in zip(lr_result['f1'], lr_result['std'])], 
+                           [i+j for i,j in zip(lr_result['f1'], lr_result['std'])],
+                           alpha=0.1) 
+  
             
     plt.title('Optimizing Number of Moments to Maximize f1 Score')
     plt.xlabel('Number of Moments')
     plt.ylabel('f1 score')
-    plt.legend()
+    plt.legend(loc='upper right', bbox_to_anchor=(1.4, 1))
     plt.show()
     
     
@@ -232,14 +175,14 @@ def plot_cv_h_params(clf_result):
         ax.plot(clf_result['nr_moments'], clf_result['cost'], label='Cost', alpha=0.5)
         ax.set_title('Hyperparameters of SVM')
         ax.set_xlabel('Number of Moments as Features')
-        ax.legend()
+        ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1))
         
     else:
         fig, ax = plt.subplots()
         ax.plot(clf_result['nr_moments'], clf_result['alpha'], label = 'alpha')
         ax.set_title('Hyperparameter of Logistic Regression')
         ax.set_xlabel('Number of Moments as Features')
-        ax.legend()
+        ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1))
   
     plt.show()
 
@@ -303,7 +246,7 @@ def cv_numsteps(num_steps_list, test_data, train_data, cv_config, classifier):
     return result
 
 
-def plot_cv_kde(svm_result, lr_result, errbar=0):
+def plot_cv_kde(svm_result, lr_result):
     # clf_result is an output dict from classification that includes:
         # num_steps_list: list of different number of steps to test
         # acc: list of accuracy
@@ -311,14 +254,18 @@ def plot_cv_kde(svm_result, lr_result, errbar=0):
         # cost
         # gamma
         # alpha
-    # errbar: 1 if error bar should be included, 0 otherwise
     fig, ax = plt.subplots()
-    if errbar == 0 :
-        plt.plot(svm_result['num_steps_list'], svm_result['f1'], label = 'svm')
-        plt.plot(lr_result['num_steps_list'], lr_result['f1'], label = 'Logistic Regression')
-    elif errbar == 1:
-        ax.errorbar(svm_result['num_steps_list'], svm_result['f1'], yerr= svm_result['std'], capsize=4, label = 'svm')
-        ax.errorbar(lr_result['num_steps_list'], lr_result['f1'], yerr= lr_result['std'], capsize=4, label = 'Logistic Regression')
+    plt.plot(svm_result['num_steps_list'], svm_result['f1'], label = 'svm')
+    plt.gca().fill_between(svm_result['num_steps_list'], 
+                           [i-j for i,j in zip(svm_result['f1'], svm_result['std'])], 
+                           [i+j for i,j in zip(svm_result['f1'], svm_result['std'])],
+                           alpha=0.1) 
+        
+    plt.plot(lr_result['num_steps_list'], lr_result['f1'], label = 'Logistic Regression')
+    plt.gca().fill_between(lr_result['num_steps_list'], 
+                           [i-j for i,j in zip(lr_result['f1'], lr_result['std'])], 
+                           [i+j for i,j in zip(lr_result['f1'], lr_result['std'])],
+                           alpha=0.1) 
             
     plt.title('Optimizing Number of Steps to Maximize f1 Score')
     plt.xlabel('Number of Steps')
@@ -361,7 +308,7 @@ def cv_kde_gbm(num_steps_list, test_data, train_data, gbm_config, cv_config):
 ###################################################
 def cv_numsteps_edf(num_steps_list, test_data, train_data, cv_config, classifier):
     # num_steps_list: list of different number of steps to test
-    # data: the graphwave data
+    # test_data, train_data: the graphwave test and train data
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # classifier: integer value, 1: svm, 2: Ridge Regression
     
@@ -388,7 +335,7 @@ def cv_numsteps_edf(num_steps_list, test_data, train_data, cv_config, classifier
 
 
 
-def plot_cv_edf(svm_result, lr_result, errbar=0):
+def plot_cv_edf(svm_result, lr_result):
     # clf_result is an output dict from classification that includes:
         # num_steps_list: list of different number of steps to test
         # acc: list of accuracy
@@ -398,13 +345,18 @@ def plot_cv_edf(svm_result, lr_result, errbar=0):
         # alpha
     # errbar: 1 if error bar should be included, 0 otherwise
     fig, ax = plt.subplots()
-    if errbar == 0 :
-        plt.plot(svm_result['num_steps_list'], svm_result['f1'], label = 'svm')
-        plt.plot(lr_result['num_steps_list'], lr_result['f1'], label = 'Logistic Regression')
-    elif errbar == 1:
-        ax.errorbar(svm_result['num_steps_list'], svm_result['f1'], yerr= svm_result['std'], capsize=4, label = 'svm')
-        ax.errorbar(lr_result['num_steps_list'], lr_result['f1'], yerr= lr_result['std'], capsize=4, label = 'Logistic Regression')
-            
+    plt.plot(svm_result['num_steps_list'], svm_result['f1'], label = 'svm')
+    plt.gca().fill_between(svm_result['num_steps_list'], 
+                           [i-j for i,j in zip(svm_result['f1'], svm_result['std'])], 
+                           [i+j for i,j in zip(svm_result['f1'], svm_result['std'])],
+                           alpha=0.1) 
+        
+    plt.plot(lr_result['num_steps_list'], lr_result['f1'], label = 'Logistic Regression')
+    plt.gca().fill_between(lr_result['num_steps_list'], 
+                           [i-j for i,j in zip(lr_result['f1'], lr_result['std'])], 
+                           [i+j for i,j in zip(lr_result['f1'], lr_result['std'])],
+                           alpha=0.1) 
+    
     plt.title('Optimizing Number of Steps to Maximize f1 Score')
     plt.xlabel('Number of Steps')
     plt.ylabel('f1 Score')
@@ -414,6 +366,7 @@ def plot_cv_edf(svm_result, lr_result, errbar=0):
     
 def cv_edf_gbm(num_steps_list, test_data, train_data, gbm_config, cv_config):
     # num_steps_list: : list of different number of steps to test
+    # test_data, train_data: the graphwave test and train data
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # gbm_config = [n_estimators_list, max_depth_list]
     
@@ -445,46 +398,38 @@ def cv_edf_gbm(num_steps_list, test_data, train_data, gbm_config, cv_config):
 ###################################################
 #             cross validation for ECF            #
 ###################################################
-def cv_numsteps_ecf(num_steps_list, step_size_list, test_data, train_data, cv_config, classifier):
+def cv_ecf(num_steps_list, step_size_list, test_data, train_data, cv_config, classifier):
     # num_steps_list: list of different number of steps to test
-    # data: the graphwave data
+    # test_data, train_data: the graphwave test and train data
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # classifier: integer value, 1: svm, 2: Ridge Regression
+    size_result = len(step_size_list)*len(num_steps_list)
+    result = pd.DataFrame(columns=['num_steps','step_size','f1','std','cost','gamma','alpha'],index=range(0, size_result))
+    c, g, a, row = 0, 0, 0, 0
     
-    f1, std, cost, gamma, alpha = list(), list(), list(), list(), list()    
     for i in tqdm(num_steps_list):
-        f1_, std_, cost_, gamma_, alpha_ = list(), list(), list(), list(), list()
         for j in step_size_list:
             t = np.arange(1, i+1) * j
-            test_ = dem.get_ecf(test_data, t)
-            train_ = dem.get_ecf(train_data, t)
+            test_df = dem.get_ecf(test_data, t)
+            train_df = dem.get_ecf(train_data, t)
             
             if classifier == 1:
-                f1_score, c, g = svm_model(test_, train_, cv_config)
-                cost_.append(c)
-                gamma_.append(g)
+                f1_score, c, g = svm_model(test_df, train_df, cv_config)
+                f1 = f1_score.mean()
+                std = f1_score.std()
 
             elif classifier == 2:
-                f1_score, a = lr_model(test_, train_, cv_config)
-                alpha_.append(a)
+                f1_score, a = lr_model(test_df, train_df, cv_config)
+                f1 = f1_score.mean()
+                std = f1_score.std()
             
-            f1_.append(f1_score.mean())
-            std_.append(f1_score.std())
+            result.iloc[row] = ([i, j, f1, std, c, g, a])
+            row = row + 1
         
-        f1.append(f1_)
-        std.append(std_)
-        cost.append(cost_)
-        gamma.append(gamma_)
-        alpha.append(alpha_)
-        sleep(0.1)
-    
-        
-    result = dict(zip(['f1','std','cost','gamma','alpha','num_steps_list','step_size_list'],
-                      [f1, std, cost, gamma, alpha, num_steps_list, step_size_list]))
     return result
 
 
-def plot_cv_ecf(svm_result, lr_result, errbar=0):
+def plot_cv_ecf(svm_result, lr_result):
     # clf_result is an output dict from classification that includes:
         # num_steps_list: list of different number of steps to test
         # acc: list of accuracy
