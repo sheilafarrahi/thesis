@@ -57,8 +57,8 @@ def prepare_data(test_data, train_data):
 def svm_model(test_data, train_data, cv_config, plot=0):
     X, y, X_train, X_test, y_train, y_test = prepare_data(test_data, train_data)
     param_grid = [
-        {'C':np.logspace(-2,1,15),
-         'gamma':np.logspace(-2,1,15), 
+        {'C':np.logspace(-2,1,5),
+         'gamma':np.logspace(-2,1,5), 
          'kernel':['rbf']},
     ]
     
@@ -71,20 +71,21 @@ def svm_model(test_data, train_data, cv_config, plot=0):
     clf_svm.fit(X_train, y_train)
     
     # plotting part out will be moved out of this function
-    y_pred = clf_svm.predict(X_test)
+    
     if plot==1:
+        y_pred = clf_svm.predict(X_test)
         c_matrix = confusion_matrix(y_test, y_pred)
         disp = ConfusionMatrixDisplay(c_matrix, display_labels=clf_svm.classes_)
         disp.plot(cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
         plt.show()
     
-    scores = cross_val_score(clf_svm, X_train, y_train, cv=cv_config[1])
+    scores = cross_val_score(clf_svm, X_test, y_test, cv=cv_config[1])
     return scores, cost, gamma
 
 
 def rr_model(test_data, train_data, cv_config, plot=0):
     X, y, X_train, X_test, y_train, y_test = prepare_data(test_data, train_data)
-    alphas = np.logspace(0,20,50)
+    alphas = np.logspace(-2, 2, 10)
     clf_rr = RidgeClassifierCV(alphas)
     clf_rr.fit(X_train, y_train)
     
@@ -96,7 +97,7 @@ def rr_model(test_data, train_data, cv_config, plot=0):
         disp.plot(cmap=plt.cm.Blues, colorbar=False, xticks_rotation='vertical')
         plt.show()
     
-    scores = cross_val_score(clf_rr, X_train, y_train, cv=cv_config[1])
+    scores = cross_val_score(clf_rr, X_test, y_test, cv=cv_config[1])
     alpha= clf_rr.alpha_
     
     return scores, alpha
@@ -125,8 +126,8 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, c
                 train_df = dem.get_kde(train_data, x)
                 test_df = dem.get_kde(test_data, x)
             elif method == 'edf':
-                train_df = dem.get_kde(train_data, x)
-                test_df = dem.get_kde(test_data, x)
+                train_df = dem.get_edf(train_data, x)
+                test_df = dem.get_edf(test_data, x)
             if classifier == 1:
                 score, c, g = svm_model(test_df, train_df,cv_config)
                 cost_.append(c)
@@ -261,19 +262,19 @@ def plot_cv_h_params(clf_result):
 #####################################################
 #                        ECF                        #
 #####################################################            
-def cv_ecf(sample_size_list, step_size_list, num_steps_list, dists, sample_config, cv_config, classifier, transform = False):
+def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, sample_config, cv_config, classifier, transform = False):
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
-    size_result = len(sample_size_list)*len(step_size_list)*len(num_steps_list)
-    result = pd.DataFrame(columns=['sample_size','num_steps','step_size','acc','std','cost','gamma','alpha'],index=range(0, size_result))
+    size_result = len(sample_size_list)*len(max_t_list)*len(num_steps_list)
+    result = pd.DataFrame(columns=['sample_size','num_steps','max_t','acc','std','cost','gamma','alpha'],index=range(0, size_result))
     c, g, a, row = 0, 0, 0, 0
     for i in tqdm(sample_size_list):
         samples = dm.get_samples(dists, sample_config[1], i, transform = transform)
         train_data, test_data = split_data(samples, cv_config[0])
         for j in num_steps_list:
-            for k in step_size_list:
-                t = np.arange(1, j + 1) * k
+            for k in max_t_list:
+                t = np.linspace(k/j, k, j)
                 train_df = dem.get_ecf(train_data, t)
                 test_df = dem.get_ecf(test_data, t)
                 
@@ -292,22 +293,22 @@ def cv_ecf(sample_size_list, step_size_list, num_steps_list, dists, sample_confi
 
 def plot_cv_ecf(clf_result):
     sample_size = clf_result['sample_size'].unique()
-    step_size = clf_result['step_size'].unique()
+    max_t = clf_result['max_t'].unique()
     colors = get_default_plt_colors()
 
     for i in sample_size:
         fig, ax = plt.subplots()
         handles = []
-        for j, color in zip(step_size, colors):
-            df = clf_result.loc[(clf_result['sample_size'] == i) & (clf_result['step_size'] == j)]
+        for j, color in zip(max_t, colors):
+            df = clf_result.loc[(clf_result['sample_size'] == i) & (clf_result['max_t'] == j)]
             x = df['num_steps'].tolist()
             y = df['acc'].tolist()
-            plt.plot(x, y, label = str(round(j/np.pi,1))+str(' * pi') , c = color, alpha = 0.7)
+            plt.plot(x, y, label = j , c = color, alpha = 0.7)
             plt.gca().fill_between(x,[i-j for i,j in zip(df['acc'], df['std'])], 
                                    [i+j for i,j in zip(df['acc'], df['std'])],
                                    facecolor=color, alpha=0.1) 
-            ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Step Size')
-            plt.title('Optimizing Number of Steps & Step Size to Maximize Accuracy, Sample Size =%i' %i)
+            ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Max t')
+            plt.title('Optimizing Number of Steps & Max t to Maximize Accuracy, Sample Size =%i' %i)
             plt.xlabel('Number of Steps')
             plt.ylabel('Accuracy')
             plt.ylim(0,1.1)

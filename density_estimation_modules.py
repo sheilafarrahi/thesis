@@ -41,6 +41,8 @@ def get_histogram_of_moments(df):
             ax.hist(moments, density=True, histtype='stepfilled', bins='auto', alpha=0.75, label=distr_name)
         plt.title('moment: ' + moment_name)
         ax.legend(loc='upper right', bbox_to_anchor=(1.4, 1))
+        plt.xlim(0,0.6)
+        plt.ylim(0,190)
         
 
 ##########################################
@@ -137,4 +139,4 @@ def get_ecf_plot(df, t):
         i_part = df.loc[df.iloc[:,-1] == name].iloc[:,len(t):-1]
         hh = ax.plot(r_part.T, i_part.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
-    ax.legend(handles=handles)
+    ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1.4, 1))

@@ -49,8 +49,15 @@ def get_samples(distributions_dict, nr_sample, sample_size, random_state=10, tra
     return df
 
 # dont check this
-def plot_histograms_of_samples(samples_dict):
-    for i, (name, samples) in enumerate(samples_dict.items()):
+def plot_histograms_of_samples(df):
+    dists = df['label'].unique()
+    for dist in dists:
         fig, ax = plt.subplots()
-        ax.hist(samples, density=True, histtype='stepfilled', bins='auto', label=name, alpha=0.1)
-        ax.legend()
+        handles = []
+        df_dist = df.loc[df['label']==dist].iloc[:,:-1]
+        for i in range(len(df_dist)):
+            sample = df_dist.iloc[i,:]
+            ax.hist(sample, density=True, histtype='stepfilled', bins='auto', alpha=0.1)
+            ax.set_title('Samples from %s' %dist)
+            plt.ylim(0,3)
+            plt.xlim(0,10)
