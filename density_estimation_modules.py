@@ -41,8 +41,8 @@ def get_histogram_of_moments(df):
             ax.hist(moments, density=True, histtype='stepfilled', bins='auto', alpha=0.75, label=distr_name)
         plt.title('moment: ' + moment_name)
         ax.legend(loc='upper right', bbox_to_anchor=(1.4, 1))
-        plt.xlim(0,0.6)
-        plt.ylim(0,190)
+        #plt.xlim(0,0.6)
+        #plt.ylim(0,190)
         
 
 ##########################################

@@ -44,8 +44,8 @@ def prepare_data(test_data, train_data):
     X_train_scaled = scaler_train.transform(X_train)
     
     scaler_test = StandardScaler()
-    scaler_test.fit(X_test)
-    X_test_scaled = scaler_test.transform(X_test)
+    #scaler_test.fit(X_test)
+    X_test_scaled = scaler_train.transform(X_test)
 
     X = pd.concat([X_train,X_test], ignore_index=True)
     y = pd.concat([y_train,y_test], ignore_index=True)
