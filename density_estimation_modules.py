@@ -140,3 +140,5 @@ def get_ecf_plot(df, t):
         hh = ax.plot(r_part.T, i_part.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1.4, 1))
+    plt.xlabel('real part')
+    plt.ylabel('imaginary part')
