@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import seaborn as sns
 from tqdm.auto import tqdm
 from time import sleep
 import matplotlib.pyplot as plt
@@ -74,7 +75,8 @@ def svm_model(data, n_folds):
         X_test_scaled = scaler_train.transform(X_test)
 
         # find the best hyperparams for the model
-        param_grid = [{'C':np.logspace(-2,1,5),'gamma':np.logspace(-2,1,5), 'kernel':['rbf']},]
+        #param_grid = [{'C':np.logspace(-2,1,5),'gamma':np.logspace(-2,1,5), 'kernel':['rbf']},]
+        param_grid = [{'C':[0.01, 0.25, 1, 5, 10],'gamma':[0.01, 0.25, 1, 5, 10], 'kernel':['rbf']},]
         optimal_params = GridSearchCV(SVC(), param_grid, cv=n_folds, verbose=0)
         
         # fit the model
@@ -82,7 +84,7 @@ def svm_model(data, n_folds):
         cost = optimal_params.best_params_['C']
         gamma = optimal_params.best_params_['gamma']
 
-        clf_svm = SVC(random_state=100, C=cost, gamma=gamma)
+        clf_svm = SVC(kernel='rbf', C=cost, gamma=gamma)
         clf_svm.fit(X_train, y_train)
         y_pred = clf_svm.predict(X_test)
         score = accuracy_score(y_test, y_pred)
@@ -155,27 +157,18 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, n
             
     return result
 
-def plot_cv_numsteps_samplesize(clf_result):
-    sample_size = clf_result['sample_size'].unique()
-    colors = get_default_plt_colors()
-
-    fig, ax = plt.subplots()
-    handles = []
-    for i, color in zip(sample_size, colors):
-        df = clf_result.loc[clf_result['sample_size'] == i]
-        x = df['num_steps'].tolist()
-        y = df['acc'].tolist()
-        plt.plot(x, y, label = i , c = color, alpha = 0.7)
-        plt.gca().fill_between(x,[i-j for i,j in zip(df['acc'], df['std'])], 
-                               [i+j for i,j in zip(df['acc'], df['std'])],
-                               facecolor=color, alpha=0.1) 
-        ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
-        plt.title('KDE')
-        plt.xlabel('Number of Steps')
-        plt.ylabel('Accuracy')
-        plt.grid(color='#DDDDDD')
-        plt.ylim(0,1.1)
+def plot_cv_numsteps_samplesize(clf_result, method):
+    ax = sns.lineplot(data = clf_result, x='num_steps',y='score', hue='sample_size', ci = 'sd', legend='full', palette='muted')
+    ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
+    ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+    ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
+    plt.title(method)
+    plt.ylabel('Accuracy')
+    plt.xlabel('Number of Steps')
+    plt.grid(color='#DDDDDD')
+    plt.ylim(0,1.1)
     plt.show()
+    
 
 ###########################################################
 #                    Moments Approach                     #
@@ -209,103 +202,57 @@ def plot_cv_moments(clf_result):
         # sample_size: list of different sample sizes to test
         # nr_moments: list of different number of moments to test
         # acc: list of accuracy
-        # std: list of standard deviation
-    sample_size = clf_result['sample_size'].unique()
-    colors = get_default_plt_colors()
 
-    fig, ax = plt.subplots()
-    handles = []
-    for i, color in zip(sample_size, colors):
-        df = clf_result.loc[clf_result['sample_size'] == i]
-        x = df['nr_moments'].tolist()
-        y = df['acc'].tolist()
-        plt.plot(x, y, label = i , c = color, alpha = 0.7)
-        plt.gca().fill_between(x,[i-j for i,j in zip(df['acc'], df['std'])], 
-                               [i+j for i,j in zip(df['acc'], df['std'])],
-                               facecolor=color, alpha=0.1) 
-        ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
-        plt.title('Moments Approach')
-        plt.xlabel('Number of moments')
-        plt.ylabel('Accuracy')
-        plt.grid(color='#DDDDDD')
-        plt.ylim(0,1.1)
+    ax = sns.lineplot(data = clf_result, x='nr_moments',y='score', hue='sample_size', ci = 'sd', legend='full', palette='muted')
+    ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+    ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
+    ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
+    plt.title('Moments Approach')
+    plt.xlabel('Number of moments')
+    plt.ylabel('Accuracy')
+    plt.grid(color='#DDDDDD')
+    plt.ylim(0,1.1)
     plt.show()
     
-    
-def plot_cv_h_params(clf_result):
-    if 'nr_moments' in clf_result.keys():
-        x = clf_result['nr_moments']
-    elif 'num_steps' in clf_result.keys():
-        x = clf_result['num_steps']
-    if bool(clf_result['cost'][0]):
-        fig, (ax1, ax2) = plt.subplots(1,2, figsize=(14,4.5))
-        for i in range(len(clf_result['gamma'])):
-            ax1.plot(x, clf_result['gamma'][i], label = str(clf_result['sample_size'][i]), alpha=0.7)
-            ax1.set_title('Optimal Gamma')
-
-            ax2.plot(x, clf_result['cost'][i], label = str(clf_result['sample_size'][i]), alpha=0.7)
-            ax2.set_title('Optimal Cost')
-            ax2.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
-        plt.show()
-    else:
-        fig, ax = plt.subplots()
-        for i in range(len(clf_result['alpha'])):
-            ax.plot(x, clf_result['alpha'][i], label = str(clf_result['sample_size'][i]), alpha=0.7)
-            ax.set_title('Optimal Alpha')
-            ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
-            
-            
+         
 #####################################################
 #                        ECF                        #
 #####################################################            
-def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, sample_config, cv_config, classifier, transform = False):
+def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample, n_folds, classifier, transform = False):
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
-    size_result = len(sample_size_list)*len(max_t_list)*len(num_steps_list)
-    result = pd.DataFrame(columns=['sample_size','num_steps','max_t','acc','std','cost','gamma','alpha'],index=range(0, size_result))
-    c, g, a, row = 0, 0, 0, 0
+    result = pd.DataFrame()
     for i in tqdm(sample_size_list):
-        samples = dm.get_samples(dists, sample_config[1], i, transform = transform)
-        train_data, test_data = split_data(samples, cv_config[0])
+        samples = dm.get_samples(dists, nr_sample, i, transform = transform)
         for j in num_steps_list:
             for k in max_t_list:
                 t = np.linspace(k/j, k, j)
-                train_df = dem.get_ecf(train_data, t)
-                test_df = dem.get_ecf(test_data, t)
-                
+                ecf_df = dem.get_ecf(samples, t)
                 if classifier == 1:
-                    score, c, g = svm_model(test_df, train_df,cv_config)
-                    acc = score.mean()
-                    std = score.std()
+                    result_ = svm_model(ecf_df, n_folds)
+      
                 elif classifier == 2:
-                    score, a = rr_model(test_df, train_df, cv_config)
-                    acc = score.mean()
-                    std = score.std()
-                    
-                result.iloc[row] = ([i, j, k, acc, std, c, g, a])
-                row = row + 1
+                    result_ = rr_model(ecf_df, n_folds)
+   
+                result_['sample_size'] = i
+                result_['num_steps'] = j
+                result_['max_t'] = k
+                result = result.append(result_, ignore_index = True)
+                
     return result
 
 def plot_cv_ecf(clf_result):
-    sample_size = clf_result['sample_size'].unique()
-    max_t = clf_result['max_t'].unique()
-    colors = get_default_plt_colors()
-
-    for i in sample_size:
+    for i in (clf_result['sample_size'].unique()):
         fig, ax = plt.subplots()
-        handles = []
-        for j, color in zip(max_t, colors):
-            df = clf_result.loc[(clf_result['sample_size'] == i) & (clf_result['max_t'] == j)]
-            x = df['num_steps'].tolist()
-            y = df['acc'].tolist()
-            plt.plot(x, y, label = j , c = color, alpha = 0.7)
-            plt.gca().fill_between(x,[i-j for i,j in zip(df['acc'], df['std'])], 
-                                   [i+j for i,j in zip(df['acc'], df['std'])],
-                                   facecolor=color, alpha=0.1) 
-            ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Max t')
-            plt.title('Optimizing Number of Steps & Max t to Maximize Accuracy, Sample Size =%i' %i)
-            plt.xlabel('Number of Steps')
-            plt.ylabel('Accuracy')
-            plt.grid(color='#DDDDDD')
-            plt.ylim(0,1.1)
+        ax = sns.lineplot(data = clf_result.loc[clf_result['sample_size']==i], 
+                          x='num_steps',y='score', hue='max_t', ci = 'sd', legend='full', palette='muted')
+        ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Max t')
+        ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+        ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
+        plt.title('ECF, Sample Size =%i' %i)
+        plt.ylabel('Accuracy')
+        plt.xlabel('Number of Steps')
+        plt.grid(color='#DDDDDD')
+        plt.ylim(0,1.1)
+        plt.show()
