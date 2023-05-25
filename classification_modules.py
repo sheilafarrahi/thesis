@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 from tqdm.auto import tqdm
-from time import sleep
 import matplotlib.pyplot as plt
 from sklearn.utils import resample
 from sklearn.linear_model import RidgeClassifierCV

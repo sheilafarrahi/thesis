@@ -61,3 +61,36 @@ def plot_histograms_of_samples(df):
             ax.set_title('Samples from %s' %dist)
             plt.ylim(0,3)
             plt.xlim(0,10)
+            
+
+def get_weights(n):
+    # this function
+    random_list = [random.randint(1,20) for i in range(n)]
+    weights=[]
+    for i in range(n-1):
+        weights.append(round(random_list[i]/sum(random_list),2))
+    weights.append(round(1-sum(weights),2))
+    return weights
+
+def get_modes_vars(nr_modes, init_mode):
+    modes = list()
+    var = list()
+    for i in range(nr_modes):
+        modes.append(init_mode + i*(1+ random.random()))
+        var.append(random.random()/5)
+    return modes, var
+
+def get_multimodal(nr_modes, nr_samples, sample_size):
+    samples = list()
+    weights = get_weights(nr_modes)
+    modes, var = get_modes_vars(nr_modes, 0)
+
+    for i in range(nr_samples):
+        sample = list()
+        for j in range(nr_modes):
+            sample_size_ = int(weights[j] * sample_size)
+            sample_mode = stats.norm.rvs(size = sample_size_, loc = modes[j], scale = np.sqrt(var[j]))
+            sample.extend(sample_mode)
+
+        samples.append(sample)
+    return samples
