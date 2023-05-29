@@ -6,6 +6,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+import distribution_modules as dm
+import density_estimation_modules as dem
+import classification_modules as cm
+import importlib
+
+importlib.reload(dm)
+importlib.reload(dem)
+importlib.reload(cm)
+
+
 
 def w_distance(df):
     labels = df.iloc[:,-1].unique()
@@ -41,16 +51,21 @@ def corr_coef(matrix1,matrix2):
     correlation_coefficient, p_value = pearsonr(vector1, vector2)
     return correlation_coefficient, p_value
 
-
-def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample, transform = False):
+#####################################################
+#                 Moments Approach                  #
+#####################################################
+def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample, transform=False, standardize=False):
     result = list()
     for i in tqdm(sample_size_list, desc='Completed'):
-        samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+        if standardize == True:
+            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+        else:
+            samples = dm.get_samples(dists, nr_sample, i, transform = transform)
         original_d, original_std = w_distance(samples)
         for j in nr_moments_list:
             moments_df = dem.get_moments(samples, j)
             moments_d, moments_std = w_distance(moments_df)
-            correlation_coefficient, p_value = d.corr_coef(original_d,moments_d)
+            correlation_coefficient, p_value = corr_coef(original_d,moments_d)
             result.append(dict(zip(['corr_coef','p_value','nr_moments','sample_size'],[correlation_coefficient, p_value, j, i])))
        
     result_df = pd.DataFrame(result)    
@@ -62,6 +77,49 @@ def plot_cv_moments(df):
     ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
     plt.title('Moments Approach')
     plt.xlabel('Number of moments')
+    plt.ylabel('Correlation Coefficient')
+    plt.grid(color='#DDDDDD')
+    #plt.ylim(0,1.1)
+    plt.show()
+    
+#####################################################
+#                   KDE and EDF                     #
+#####################################################
+def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, method, transform=False, standardize=False):
+    result = list()
+    for i in tqdm(sample_size_list, desc ='% completed'):
+        if standardize == True:
+            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+        else:
+            samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+
+        for j in num_steps_list:
+            if transform == False:
+                x = np.linspace(0,1,j)
+            elif transform == True:
+                perc_95 = np.percentile(samples.iloc[:,:-1],95)
+                x = np.linspace(0,perc_95,j)
+                
+            if method == 'kde':
+                df = dem.get_kde(samples, x)
+            elif method == 'edf':
+                df = dem.get_edf(samples, x)
+            
+            original_d, original_std = w_distance(samples)    
+            df_d, df_std = w_distance(df)
+            correlation_coefficient, p_value = corr_coef(original_d,df_d)
+            result.append(dict(zip(['corr_coef','p_value','num_steps','sample_size'],[correlation_coefficient, p_value, j, i])))
+            
+
+    result_df = pd.DataFrame(result)    
+    return result_df  
+
+def plot_cv_numsteps_samplesize(df, method):
+    ax = sns.lineplot(data = df, x='num_steps',y='corr_coef', hue='sample_size', ci = 'sd', legend='full', palette='muted')
+    ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+    ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
+    plt.title(method)
+    plt.xlabel('Number of steps')
     plt.ylabel('Correlation Coefficient')
     plt.grid(color='#DDDDDD')
     #plt.ylim(0,1.1)

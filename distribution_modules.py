@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+import random
 
 def get_bounded_distribution():
     bounded_distributions = {
@@ -13,7 +14,6 @@ def get_bounded_distribution():
         "uniform" : stats.uniform()
     }
     return bounded_distributions
-
 
 def get_heavytail_distribution():
     heavytail_distributions = {
@@ -45,8 +45,24 @@ def get_samples(distributions_dict, nr_sample, sample_size, random_state=10, tra
         df_sample = pd.DataFrame(samples)
         df_sample['label'] = name
         df = df.append(df_sample, ignore_index=True)
-        
     return df
+
+def standardize_df(df):
+    # standardize the given df by deducting row mean from each row and divide it by the std
+    st_df = pd.DataFrame().reindex_like(df)
+    row_mean = np.mean(df, axis=1)
+    row_std = np.std(df, axis=1) 
+    for i in range(len(df)):
+        for j in range(len(df.columns)-1):
+            st_df.iloc[i][j] = (df.iloc[i][j]-row_mean[i])/row_std[i]
+
+    st_df.iloc[:,-1] = df.iloc[:,-1]    
+    return st_df
+
+def get_st_samples(distributions_dict, nr_sample, sample_size, random_state=10, transform=False):
+    df = get_samples(distributions_dict, nr_sample, sample_size)
+    st_df = standardize_df(df)
+    return st_df
 
 # dont check this
 def plot_histograms_of_samples(df):
@@ -89,8 +105,23 @@ def get_multimodal(nr_modes, nr_samples, sample_size):
         sample = list()
         for j in range(nr_modes):
             sample_size_ = int(weights[j] * sample_size)
-            sample_mode = stats.norm.rvs(size = sample_size_, loc = modes[j], scale = np.sqrt(var[j]))
-            sample.extend(sample_mode)
+            sample_ = stats.norm.rvs(size = sample_size_, loc = modes[j], scale = np.sqrt(var[j]))
+            sample.extend(sample_)
 
         samples.append(sample)
-    return samples
+    return samples, weights, modes, var
+
+def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
+    samples = list()
+    label_list=list()
+    
+    for i in range(nr_mm_dist):
+        label = 'Dist '+ str(i+1)
+        samples_, weights, modes, var = get_multimodal(nr_modes, nr_sample, sample_size)
+        samples.extend(samples_)
+        df = pd.DataFrame(samples)
+        for j in range(nr_sample):
+            label_list.append(label)
+    
+    df['label']=label_list
+    return df
