@@ -80,7 +80,7 @@ def plot_histograms_of_samples(df):
             
 
 def get_weights(n):
-    # this function
+    # weights for each gaussian in the total samples taken in get_multimodal function
     random_list = [random.randint(1,20) for i in range(n)]
     weights=[]
     for i in range(n-1):
@@ -89,23 +89,29 @@ def get_weights(n):
     return weights
 
 def get_modes_vars(nr_modes, init_mode):
+    # generate a vector with n (nr_modes) elements to be uses as variance in get_multimodal function
     modes = list()
     var = list()
     for i in range(nr_modes):
-        modes.append(init_mode + i*(1+ random.random()))
-        var.append(random.random()/5)
+        modes.append(init_mode + i * (1+ random.random()))
+        var.append(random.uniform(0, 1))
     return modes, var
 
 def get_multimodal(nr_modes, nr_samples, sample_size):
+    # The function generates n (sample_size) samples from m (nr_modes) gaussian distributions.
+    # n is divided into m parts using a weight vector
     samples = list()
     weights = get_weights(nr_modes)
-    modes, var = get_modes_vars(nr_modes, 0)
+    modes, var = get_modes_vars(nr_modes, 1)
 
     for i in range(nr_samples):
         sample = list()
         for j in range(nr_modes):
             sample_size_ = int(weights[j] * sample_size)
             sample_ = stats.norm.rvs(size = sample_size_, loc = modes[j], scale = np.sqrt(var[j]))
+            for k in range(len(sample_)): # switch negative values with mean to avoid negative values
+                if sample_[k] < 0:
+                    sample_[k] = modes[j]
             sample.extend(sample_)
 
         samples.append(sample)
@@ -113,15 +119,19 @@ def get_multimodal(nr_modes, nr_samples, sample_size):
 
 def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
     samples = list()
-    label_list=list()
+    label_list = list()
+    mean_list = list()
+    var_list = list()
     
     for i in range(nr_mm_dist):
         label = 'Dist '+ str(i+1)
         samples_, weights, modes, var = get_multimodal(nr_modes, nr_sample, sample_size)
         samples.extend(samples_)
+        mean_list.append(modes)
+        var_list.append(var)
         df = pd.DataFrame(samples)
         for j in range(nr_sample):
             label_list.append(label)
     
     df['label']=label_list
-    return df
+    return df, mean_list, var_list

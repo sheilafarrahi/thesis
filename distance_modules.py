@@ -79,7 +79,7 @@ def plot_cv_moments(df):
     plt.xlabel('Number of moments')
     plt.ylabel('Correlation Coefficient')
     plt.grid(color='#DDDDDD')
-    #plt.ylim(0,1.1)
+    plt.ylim(0,1)
     plt.show()
     
 #####################################################
@@ -109,7 +109,6 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, m
             df_d, df_std = w_distance(df)
             correlation_coefficient, p_value = corr_coef(original_d,df_d)
             result.append(dict(zip(['corr_coef','p_value','num_steps','sample_size'],[correlation_coefficient, p_value, j, i])))
-            
 
     result_df = pd.DataFrame(result)    
     return result_df  
@@ -122,5 +121,45 @@ def plot_cv_numsteps_samplesize(df, method):
     plt.xlabel('Number of steps')
     plt.ylabel('Correlation Coefficient')
     plt.grid(color='#DDDDDD')
-    #plt.ylim(0,1.1)
+    plt.ylim(0,1)
     plt.show()
+    
+#####################################################
+#                        ECF                        #
+#####################################################            
+def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample, transform = False, standardize=False):
+    result = list()
+    for i in tqdm(sample_size_list):
+        if standardize == True:
+            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+        else:
+            samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+            
+        for j in num_steps_list:
+            for k in max_t_list:
+                t = np.linspace(k/j, k, j)
+                df = dem.get_ecf(samples, t)
+                
+                original_d, original_std = w_distance(samples)    
+                df_d, df_std = w_distance(df)
+                correlation_coefficient, p_value = corr_coef(original_d,df_d)
+                result.append(dict(zip(['corr_coef','p_value','max_t','num_steps','sample_size'],
+                                       [correlation_coefficient, p_value, k, j, i])))
+            
+    result_df = pd.DataFrame(result)           
+    return result_df
+
+def plot_cv_ecf(clf_result):
+    for i in (clf_result['sample_size'].unique()):
+        fig, ax = plt.subplots()
+        ax = sns.lineplot(data = clf_result.loc[clf_result['sample_size']==i], 
+                          x='num_steps',y='corr_coef', hue='max_t', ci = 'sd', legend='full', palette='muted')
+        ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Max t')
+        ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+        ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
+        plt.title('ECF, Sample Size =%i' %i)
+        plt.ylabel('Correlation Coefficient')
+        plt.xlabel('Number of Steps')
+        plt.grid(color='#DDDDDD')
+        plt.ylim(0,1)
+        plt.show()
