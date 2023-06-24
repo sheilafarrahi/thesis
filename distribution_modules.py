@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
 import random
 
 def get_bounded_distribution():
@@ -55,14 +56,23 @@ def standardize_df(df):
     for i in range(len(df)):
         for j in range(len(df.columns)-1):
             st_df.iloc[i][j] = (df.iloc[i][j]-row_mean[i])/row_std[i]
-
     st_df.iloc[:,-1] = df.iloc[:,-1]    
     return st_df
 
+def min_max_scaled_df(df, lower_bound = 5, upper_bound = 95):
+    min_ = np.percentile(samples.iloc[:,:-1],lower_bound)
+    max_ = np.percentile(samples.iloc[:,:-1],upper_bound)
+    scaler = MinMaxScaler(feature_range=(min_, max_))
+    norm = scaler.fit_transform(df.iloc[:,:-1])
+    norm_df = pd.DataFrame(norm)
+    normalized_df = pd.concat([norm_df, df.iloc[:,-1]],axis = 1)
+    return normalized_df
+
 def get_st_samples(distributions_dict, nr_sample, sample_size, random_state=10, transform=False):
-    df = get_samples(distributions_dict, nr_sample, sample_size)
+    df = get_samples(distributions_dict, nr_sample, sample_size, transform = transform)
     st_df = standardize_df(df)
-    return st_df
+    nr_df = normalize_df(st_df)
+    return nr_df
 
 # dont check this
 def plot_histograms_of_samples(df):
@@ -79,59 +89,52 @@ def plot_histograms_of_samples(df):
             plt.xlim(0,10)
             
 
-def get_weights(n):
-    # weights for each gaussian in the total samples taken in get_multimodal function
-    random_list = [random.randint(1,20) for i in range(n)]
+def get_sample_size(n, sample_size):
+    # Divides the sample_size into n parts to get number of samples per each gaussian distribution
+    random_list = [random.randint(1,30) for i in range(n)]
+    sample_size_ = []
     weights=[]
     for i in range(n-1):
-        weights.append(round(random_list[i]/sum(random_list),2))
-    weights.append(round(1-sum(weights),2))
-    return weights
+        weight = random_list[i]/sum(random_list)
+        sample_size_.append(int(weight * sample_size))
+    # to make sure the sum will be eqaul to the original sample size in case sample_size is not divisible by n
+    sample_size_.append(sample_size- sum(sample_size_)) 
+    
+    sample_size_sorted=np.sort(sample_size_)
+    part_1 = sample_size_sorted[::2]
+    part_2 = sample_size_sorted[1::2][::-1]
+    final = np.append(part_1,part_2)
+    return final
 
-def get_modes_vars(nr_modes, init_mode):
-    # generate a vector with n (nr_modes) elements to be uses as variance in get_multimodal function
+def get_modes(nr_modes, init_mode):
+    # generate a vector with n (nr_modes) elements to be uses as mode in get_multimodal function
     modes = list()
+    for i in range(nr_modes):
+        modes.append(init_mode + i * random.uniform(1, 1.5))
+    return modes
+
+def get_vars(nr_modes):
+    # generate a vector with n (nr_modes) elements to be uses as variance in get_multimodal function
     var = list()
     for i in range(nr_modes):
-        modes.append(init_mode + i * (1+ random.random()))
-        var.append(random.uniform(0, 1))
-    return modes, var
+        var.append(random.uniform(0, 0.1))
+    return var
 
 def get_multimodal(nr_modes, nr_samples, sample_size):
     # The function generates n (sample_size) samples from m (nr_modes) gaussian distributions.
-    # n is divided into m parts using a weight vector
     samples = list()
-    weights = get_weights(nr_modes)
-    modes, var = get_modes_vars(nr_modes, 1)
+    sample_size_ = get_sample_size(nr_modes, sample_size)
+    modes= get_modes(nr_modes, 1)
+    var = get_vars(nr_modes)
 
     for i in range(nr_samples):
         sample = list()
         for j in range(nr_modes):
-            sample_size_ = int(weights[j] * sample_size)
-            sample_ = stats.norm.rvs(size = sample_size_, loc = modes[j], scale = np.sqrt(var[j]))
+            sample_ = stats.cauchy.rvs(size = sample_size_[j], loc = modes[j], scale = np.sqrt(var[j]))
             for k in range(len(sample_)): # switch negative values with mean to avoid negative values
                 if sample_[k] < 0:
                     sample_[k] = modes[j]
             sample.extend(sample_)
 
         samples.append(sample)
-    return samples, weights, modes, var
-
-def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
-    samples = list()
-    label_list = list()
-    mean_list = list()
-    var_list = list()
-    
-    for i in range(nr_mm_dist):
-        label = 'Dist '+ str(i+1)
-        samples_, weights, modes, var = get_multimodal(nr_modes, nr_sample, sample_size)
-        samples.extend(samples_)
-        mean_list.append(modes)
-        var_list.append(var)
-        df = pd.DataFrame(samples)
-        for j in range(nr_sample):
-            label_list.append(label)
-    
-    df['label']=label_list
-    return df, mean_list, var_list
+    return samples, sample_size_, modes, var

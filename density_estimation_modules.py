@@ -4,6 +4,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
 from statsmodels.distributions.empirical_distribution import ECDF
+from scipy.interpolate import interp1d
 def get_default_plt_colors():
     return plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -28,7 +29,22 @@ def get_moments(df, nr_moments):
     moments_df = pd.DataFrame(moments, columns=['m'+str(j) for j in range(2,i+1)])
     df = pd.concat([m1_df,moments_df], axis=1)
     df['label'] = y.values.tolist()
-    
+    return df
+
+
+def get_moments_no_label(df, nr_moments):
+    # df: a dictionary containing samples of different distribution including preselected parameters
+    # nr_moments: desired number of moments to be calculated
+    m1 = np.mean(df, axis=1)
+    m1_df = pd.DataFrame(m1, columns=['m1'])
+    m1_df = m1_df.reset_index(drop=True)
+    moments = np.zeros((len(df), nr_moments - 1)) # array to store moments after mean
+
+    for i in range(2,nr_moments+1): #calculate from 2nd moment
+        moments[:,i-2] = stats.moment(df, i, axis=1)
+
+    moments_df = pd.DataFrame(moments, columns=['m'+str(j) for j in range(2,i+1)])
+    df = pd.concat([m1_df,moments_df], axis=1)
     return df
 
 
@@ -57,7 +73,10 @@ def get_kde(df, x):
     for i in range(len(df)):
         X = df.iloc[i,:-1]
         kde = stats.gaussian_kde(list(X))
-        values = x
+        if type(x)==list:
+            values = x[i]
+        else:
+            values = x
         y_estimates.append(kde(values))
 
     kde_df = pd.DataFrame(y_estimates)  
@@ -107,7 +126,31 @@ def get_edf_plot(df, x):
         hh = ax.plot(x, temp.T, c=color, alpha=0.4, label=name)
         handles.append(hh[0] if isinstance(hh, list) else hh)
     ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1.4, 1))
+
+def get_edf_v2(df, y):
+    # df: a dataframe containing samples from different distribution
+    # y:
+    x = list()  # empty list to store cumulative probability
+    for i in range(len(df)):
+        ecdf = ECDF(df.iloc[i,:-1])
+        inverse_ecdf = interp1d(ecdf.y, ecdf.x)
+        x.append(inverse_ecdf(y))
+
+    edf_df = pd.DataFrame(x)
+    edf_df['label'] = df.iloc[:,-1].tolist()
+    return edf_df 
+
+def get_edf_plot_v2(df, y):
+    names = df.iloc[:,-1].unique()
+    fig, ax = plt.subplots()
+    colors = get_default_plt_colors()
+    handles = []
     
+    for name, color in zip(names, colors):  # iterate over each distribution
+        temp = df.loc[df.iloc[:,-1] == name].iloc[:, :-1].to_numpy()
+        hh = ax.plot(temp.T, y, c=color, alpha=0.4, label=name)
+        handles.append(hh[0] if isinstance(hh, list) else hh)
+    ax.legend(handles=handles, loc='upper right', bbox_to_anchor=(1.4, 1))
 
 ##########################################
 #   Empirical characteristics Function   #

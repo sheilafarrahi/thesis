@@ -136,7 +136,8 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, n
         samples = dm.get_samples(dists, nr_sample, i, transform = transform)
         for j in num_steps_list:
             if transform == False:
-                x = np.linspace(0,1,j)
+                #x = np.linspace(0,1,j)
+                y = np.linspace(0.01,1,j)
             elif transform == True:
                 perc_95 = np.percentile(samples.iloc[:,:-1],95)
                 x = np.linspace(0,perc_95,j)
@@ -144,7 +145,8 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, n
             if method == 'kde':
                 df = dem.get_kde(samples, x)
             elif method == 'edf':
-                df = dem.get_edf(samples, x)
+                #df = dem.get_edf(samples, x)
+                df = dem.get_edf_v2(samples, y)
             if classifier == 1:
                 result_ = svm_model(df, n_folds)
              

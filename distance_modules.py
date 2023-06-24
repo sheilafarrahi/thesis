@@ -75,11 +75,11 @@ def plot_cv_moments(df):
     ax = sns.lineplot(data = df, x='nr_moments',y='corr_coef', hue='sample_size', ci = 'sd', legend='full', palette='muted')
     ax.xaxis.set_major_locator(plt.MultipleLocator(2))
     ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
-    plt.title('Moments Approach')
+    #plt.title('Moments Approach')
     plt.xlabel('Number of moments')
     plt.ylabel('Correlation Coefficient')
     plt.grid(color='#DDDDDD')
-    plt.ylim(0,1)
+    plt.ylim(-1,1.1)
     plt.show()
     
 #####################################################
@@ -89,39 +89,39 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, m
     result = list()
     for i in tqdm(sample_size_list, desc ='% completed'):
         if standardize == True:
-            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)   
         else:
             samples = dm.get_samples(dists, nr_sample, i, transform = transform)
-
+        
+        original_d, original_std = w_distance(samples)
         for j in num_steps_list:
             if transform == False:
                 x = np.linspace(0,1,j)
-            elif transform == True:
+                
+            elif transform == True :
                 perc_95 = np.percentile(samples.iloc[:,:-1],95)
                 x = np.linspace(0,perc_95,j)
-                
+            
             if method == 'kde':
                 df = dem.get_kde(samples, x)
             elif method == 'edf':
                 df = dem.get_edf(samples, x)
-            
-            original_d, original_std = w_distance(samples)    
+
             df_d, df_std = w_distance(df)
             correlation_coefficient, p_value = corr_coef(original_d,df_d)
             result.append(dict(zip(['corr_coef','p_value','num_steps','sample_size'],[correlation_coefficient, p_value, j, i])))
-
+    
     result_df = pd.DataFrame(result)    
     return result_df  
 
-def plot_cv_numsteps_samplesize(df, method):
+def plot_cv_numsteps_samplesize(df):
     ax = sns.lineplot(data = df, x='num_steps',y='corr_coef', hue='sample_size', ci = 'sd', legend='full', palette='muted')
     ax.xaxis.set_major_locator(plt.MultipleLocator(2))
     ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
-    plt.title(method)
     plt.xlabel('Number of steps')
     plt.ylabel('Correlation Coefficient')
     plt.grid(color='#DDDDDD')
-    plt.ylim(0,1)
+    plt.ylim(-1,1.1)
     plt.show()
     
 #####################################################
@@ -132,15 +132,16 @@ def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample, trans
     for i in tqdm(sample_size_list):
         if standardize == True:
             samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+            st_samples = dm.standardize_df(samples)
+            original_d, original_std = w_distance(st_samples)
         else:
             samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+            original_d, original_std = w_distance(samples)
             
         for j in num_steps_list:
             for k in max_t_list:
                 t = np.linspace(k/j, k, j)
                 df = dem.get_ecf(samples, t)
-                
-                original_d, original_std = w_distance(samples)    
                 df_d, df_std = w_distance(df)
                 correlation_coefficient, p_value = corr_coef(original_d,df_d)
                 result.append(dict(zip(['corr_coef','p_value','max_t','num_steps','sample_size'],
@@ -161,5 +162,5 @@ def plot_cv_ecf(clf_result):
         plt.ylabel('Correlation Coefficient')
         plt.xlabel('Number of Steps')
         plt.grid(color='#DDDDDD')
-        plt.ylim(0,1)
+        plt.ylim(-1,1.1)
         plt.show()
