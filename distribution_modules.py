@@ -16,6 +16,18 @@ def get_bounded_distribution():
     }
     return bounded_distributions
 
+
+def get_bounded_distribution_v2():
+    bounded_distributions = {
+        "beta_1_1" : stats.beta(a=1, b=1),
+        "beta_1_2" : stats.beta(a=1, b=2),
+        "beta_2_1" : stats.beta(a=2, b=1),
+        "beta_3_1" : stats.beta(a=3, b=1),
+        "beta_1_3" : stats.beta(a=1, b=3),
+        
+    }
+    return bounded_distributions
+
 def get_heavytail_distribution():
     heavytail_distributions = {
         "cauchy" : stats.halfcauchy(),
@@ -26,13 +38,13 @@ def get_heavytail_distribution():
     return heavytail_distributions
 
         
-def get_samples(distributions_dict, nr_sample, sample_size, random_state=10, transform=False):
+def get_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10, transform=False):
     # distributions_dict: a dictinary containing different distribution including preselected parameters
-    # nr_sample: number of samples
+    # nr_sample_sets: number of sample sets
     # sample size: size of each sample
     samples_dict = dict()
     for i, (name, distr) in enumerate(distributions_dict.items()):
-        samples = distr.rvs(size=(nr_sample, sample_size), random_state=random_state)
+        samples = distr.rvs(size=(nr_sample_sets, sample_size), random_state=random_state)
         samples_dict[name] = samples
         
     if transform == True:
@@ -68,11 +80,10 @@ def min_max_scaled_df(df, lower_bound = 5, upper_bound = 95):
     normalized_df = pd.concat([norm_df, df.iloc[:,-1]],axis = 1)
     return normalized_df
 
-def get_st_samples(distributions_dict, nr_sample, sample_size, random_state=10, transform=False):
-    df = get_samples(distributions_dict, nr_sample, sample_size, transform = transform)
+def get_st_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10, transform=False):
+    df = get_samples(distributions_dict, nr_sample_sets, sample_size, transform = transform)
     st_df = standardize_df(df)
-    nr_df = normalize_df(st_df)
-    return nr_df
+    return st_df
 
 # dont check this
 def plot_histograms_of_samples(df):
@@ -120,14 +131,14 @@ def get_vars(nr_modes):
         var.append(random.uniform(0, 0.1))
     return var
 
-def get_multimodal(nr_modes, nr_samples, sample_size):
+def get_multimodal(nr_modes, nr_sample_sets, sample_size):
     # The function generates n (sample_size) samples from m (nr_modes) gaussian distributions.
     samples = list()
     sample_size_ = get_sample_size(nr_modes, sample_size)
     modes= get_modes(nr_modes, 1)
     var = get_vars(nr_modes)
 
-    for i in range(nr_samples):
+    for i in range(nr_sample_sets):
         sample = list()
         for j in range(nr_modes):
             sample_ = stats.cauchy.rvs(size = sample_size_[j], loc = modes[j], scale = np.sqrt(var[j]))

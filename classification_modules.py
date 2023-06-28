@@ -4,7 +4,7 @@ import seaborn as sns
 from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 from sklearn.utils import resample
-from sklearn.linear_model import RidgeClassifierCV
+from sklearn.linear_model import RidgeClassifierCV, LogisticRegression
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -38,15 +38,13 @@ def prepare_data(test_data, train_data):
     y_train = train_data.iloc[:, -1]
     y_test = test_data.iloc[:, -1]
 
-    # Scaling data
+    # Standardize features by removing the mean and scaling to unit variance
     scaler_train = StandardScaler()
     scaler_train.fit(X_train)
     X_train_scaled = scaler_train.transform(X_train)
     
-    scaler_test = StandardScaler()
     #scaler_test.fit(X_test)
     X_test_scaled = scaler_train.transform(X_test)
-
     X = pd.concat([X_train,X_test], ignore_index=True)
     y = pd.concat([y_train,y_test], ignore_index=True)
     
@@ -74,18 +72,17 @@ def svm_model(data, n_folds):
         X_test_scaled = scaler_train.transform(X_test)
 
         # find the best hyperparams for the model
-        #param_grid = [{'C':np.logspace(-2,1,5),'gamma':np.logspace(-2,1,5), 'kernel':['rbf']},]
         param_grid = [{'C':[0.01, 0.25, 1, 5, 10],'gamma':[0.01, 0.25, 1, 5, 10], 'kernel':['rbf']},]
         optimal_params = GridSearchCV(SVC(), param_grid, cv=n_folds, verbose=0)
         
         # fit the model
-        optimal_params.fit(X_train, y_train)
+        optimal_params.fit(X_train_scaled, y_train)
         cost = optimal_params.best_params_['C']
         gamma = optimal_params.best_params_['gamma']
 
         clf_svm = SVC(kernel='rbf', C=cost, gamma=gamma)
-        clf_svm.fit(X_train, y_train)
-        y_pred = clf_svm.predict(X_test)
+        clf_svm.fit(X_train_scaled, y_train)
+        y_pred = clf_svm.predict(X_test_scaled)
         score = accuracy_score(y_test, y_pred)
         result.append( dict(zip(['score','cost','gamma'],[score, cost, gamma])))
     result_df = pd.DataFrame(result)
@@ -126,21 +123,22 @@ def rr_model(data, n_folds):
 #####################################################
 #                   KDE and EDF                     #
 #####################################################
-def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, n_folds, method, classifier, transform=False):
+def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_sets, n_folds, method, classifier, transform=False):
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # method = kde or edf
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
     result = pd.DataFrame()
     for i in tqdm(sample_size_list, desc ='% completed'):
-        samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+        samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         for j in num_steps_list:
             if transform == False:
-                #x = np.linspace(0,1,j)
+                x = np.linspace(0,1,j)
                 y = np.linspace(0.01,1,j)
             elif transform == True:
                 perc_95 = np.percentile(samples.iloc[:,:-1],95)
                 x = np.linspace(0,perc_95,j)
+                y = np.linspace(0.01,1,j)
                 
             if method == 'kde':
                 df = dem.get_kde(samples, x)
@@ -174,17 +172,17 @@ def plot_cv_numsteps_samplesize(clf_result, method):
 ###########################################################
 #                    Moments Approach                     #
 ###########################################################
-def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample, n_folds, classifier, transform = False):
+def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample_sets, n_folds, classifier, transform = False):
     # sample_size_list: list of different sample sizes to test
     # nr_moments_list: list of different number of moments to test
     # dists: bounded_dists or heavytail_dists
-    # nr_sample: 
+    # nr_sample_sets: 
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
     result = pd.DataFrame()
     for i in tqdm(sample_size_list, desc='Completed'):
-        samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+        samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         for j in nr_moments_list:
             moments_df = dem.get_moments(samples, j)
             if classifier == 1:
@@ -215,17 +213,16 @@ def plot_cv_moments(clf_result):
     plt.ylim(0,1.1)
     plt.show()
     
-         
 #####################################################
 #                        ECF                        #
 #####################################################            
-def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample, n_folds, classifier, transform = False):
+def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, n_folds, classifier, transform = False):
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
     result = pd.DataFrame()
     for i in tqdm(sample_size_list):
-        samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+        samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         for j in num_steps_list:
             for k in max_t_list:
                 t = np.linspace(k/j, k, j)
@@ -257,3 +254,173 @@ def plot_cv_ecf(clf_result):
         plt.grid(color='#DDDDDD')
         plt.ylim(0,1.1)
         plt.show()
+        
+
+########################################################### Manual grid search ###########################################################
+
+def split_data_n_folds(data, n_folds):
+    skf = StratifiedKFold(n_splits = n_folds)
+    train_index_list = list()
+    test_index_list = list()
+    X = data.iloc[:, :-1]
+    y = data.iloc[:,-1]
+    for train_index, test_index in skf.split(X, y):
+        train_index_list.append(train_index)   
+        test_index_list.append(test_index)
+    return train_index_list, test_index_list
+
+def grid_seach_svm(data, n_folds, train_index_list, test_index_list, cost, gamma):
+    X = data.iloc[:, :-1]
+    y = data.iloc[:,-1]
+    result = list()
+    for c in cost:
+        for g in gamma:
+            for i in range(n_folds):
+                X_train = X.iloc[train_index_list[i]]
+                y_train = y.iloc[train_index_list[i]]
+                y_train_reset_index = y_train.reset_index(drop=True)
+
+                # standardize the data
+                scaler_train = StandardScaler()
+                scaler_train.fit(X_train)
+                X_train_scaled = scaler_train.transform(X_train)
+
+                clf_svm = SVC(kernel='rbf', probability=True, decision_function_shape = 'ovr', class_weight='balanced', C=c, gamma=g)
+                clf_svm.fit(X_train_scaled, y_train)
+                prob = clf_svm.predict_proba(X_train_scaled)
+                loss = 0
+                for j in range(len(prob)):
+                    k = prob.argmax(axis=1)[j]
+                    l = prob.max(axis=1)[j]
+                    if clf_svm.classes_[k] != y_train_reset_index[j]:
+                        loss = -np.log(l) + loss
+
+                result.append( dict(zip(['fold','cost','gamma','loss'],[i, c, g, loss])))
+                result_df = pd.DataFrame(result)
+                
+    res_agg = result_df.groupby(['cost','gamma'], as_index=False).agg({'loss':['mean','std']})
+    res_agg.columns = ['cost','gamma','mean','std']
+    min_err_index = np.argmin(res_agg['mean'])
+    best_model_cost = res_agg['cost'][min_err_index]
+    best_model_gamma = res_agg['gamma'][min_err_index]
+  
+    return best_model_cost, best_model_gamma
+
+
+def grid_search_lr(data, n_folds, train_index_list, test_index_list, alpha):
+    X = data.iloc[:, :-1]
+    y = data.iloc[:,-1]
+    result = list()
+    for a in alpha:
+        X_train = X.iloc[train_index_list[i]]
+        y_train = y.iloc[train_index_list[i]]
+        y_train_reset_index = y_train.reset_index(drop=True)
+
+        # standardize the data
+        scaler_train = StandardScaler()
+        scaler_train.fit(X_train)
+        X_train_scaled = scaler_train.transform(X_train)
+        
+        clf_lr = LogisticRegression(penalty='l2')
+        clf_lr.fit(X_train_scaled, y_train)
+        
+
+def svm_model_v2(data, n_folds, cost_vector, gamma_vector):
+    X = data.iloc[:, :-1]
+    y = data.iloc[:,-1]
+    train_index_list, test_index_list = split_data_n_folds(data, n_folds)
+    cost, gamma = grid_seach_svm(data, n_folds, train_index_list, test_index_list, cost_vector, gamma_vector)
+    clf_svm = SVC(kernel='rbf', C=cost, gamma=gamma)
+    result = list()
+    for i in range(n_folds):
+        X_train = X.iloc[train_index_list[i]]
+        y_train = y.iloc[train_index_list[i]]
+        X_test = X.iloc[test_index_list[i]]
+        y_test = y.iloc[test_index_list[i]]
+        
+        # standardize the data
+        scaler_train = StandardScaler()
+        scaler_train.fit(X_train)
+        X_train_scaled = scaler_train.transform(X_train)
+        X_test_scaled = scaler_train.transform(X_test)
+ 
+        clf_svm.fit(X_train_scaled, y_train)
+        y_pred = clf_svm.predict(X_test_scaled)
+        score = accuracy_score(y_test, y_pred)
+        result.append( dict(zip(['fold','score','cost','gamma'],[i, score, cost, gamma])))
+        result_df = pd.DataFrame(result)
+        
+    return result_df
+
+
+def rr_model(data, n_folds):
+    X = data.iloc[:, :-1]
+    y = data.iloc[:,-1]
+    result = list() # empty list to store the result
+
+    skf = StratifiedKFold(n_splits = n_folds)
+
+    # split data into test & train
+    for i, (train_index, test_index) in enumerate(skf.split(X, y)):
+        X_train = X.iloc[train_index]
+        X_test = X.iloc[test_index]
+        y_train = y.iloc[train_index]
+        y_test = y.iloc[test_index]
+
+        # standardize the data
+        scaler_train = StandardScaler()
+        scaler_train.fit(X_train)
+        X_train_scaled = scaler_train.transform(X_train)
+        X_test_scaled = scaler_train.transform(X_test)
+
+        alphas = np.logspace(-2, 2, 10)
+        clf_rr = RidgeClassifierCV(alphas)
+        clf_rr.fit(X_train, y_train)
+        alpha= clf_rr.alpha_
+        y_pred = clf_rr.predict(X_test)
+        score = accuracy_score(y_test, y_pred)
+        result.append( dict(zip(['score','alpha'],[score, alpha])))
+    result_df = pd.DataFrame(result)
+    
+    return result_df
+
+
+
+    
+
+###########################################################
+#                    Moments Approach                     #
+###########################################################
+def cv_samplesize_moments_v2(sample_size_list, nr_moments_list, dists, nr_sample_sets, n_folds, cost_vector, gamma_vector, classifier, transform = False):
+    result = pd.DataFrame()
+    for i in tqdm(sample_size_list, desc='Completed'):
+        samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
+        for j in nr_moments_list:
+            moments_df = dem.get_moments(samples, j)
+            if classifier == 1:
+                result_ = svm_model_v2(moments_df, n_folds, cost_vector, gamma_vector)
+
+            elif classifier == 2:
+                result_ = rr_model(moments_df, n_folds)
+                
+            result_['nr_moments'] = j
+            result_['sample_size'] = i
+            result = result.append(result_, ignore_index = True)
+        
+    return result
+
+def plot_cv_moments_v2(clf_result):
+    # clf_result is an output dataframe from classification that includes:
+        # sample_size: list of different sample sizes to test
+        # nr_moments: list of different number of moments to test
+        # acc: list of accuracy
+
+    ax = sns.lineplot(data = clf_result, x='nr_moments',y='score', hue='sample_size', ci = 'sd', legend='full', palette='muted')
+    ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+    ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
+    ax.legend(loc='upper right', bbox_to_anchor=(1.25, 1), title='Sample Size')
+    plt.xlabel('Number of moments')
+    plt.ylabel('Accuracy')
+    plt.grid(color='#DDDDDD')
+    plt.ylim(0,1.1)
+    plt.show()

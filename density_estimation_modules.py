@@ -130,15 +130,18 @@ def get_edf_plot(df, x):
 def get_edf_v2(df, y):
     # df: a dataframe containing samples from different distribution
     # y:
-    x = list()  # empty list to store cumulative probability
+    x = list() 
     for i in range(len(df)):
         ecdf = ECDF(df.iloc[i,:-1])
-        inverse_ecdf = interp1d(ecdf.y, ecdf.x)
+        #inverse_ecdf = interp1d(ecdf.y, ecdf.x)
+        inverse_ecdf= interp1d(ecdf.y[1:], ecdf.x[1:], bounds_error=False, fill_value=0)
         x.append(inverse_ecdf(y))
 
     edf_df = pd.DataFrame(x)
     edf_df['label'] = df.iloc[:,-1].tolist()
     return edf_df 
+
+
 
 def get_edf_plot_v2(df, y):
     names = df.iloc[:,-1].unique()

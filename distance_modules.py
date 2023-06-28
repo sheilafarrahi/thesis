@@ -54,13 +54,13 @@ def corr_coef(matrix1,matrix2):
 #####################################################
 #                 Moments Approach                  #
 #####################################################
-def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample, transform=False, standardize=False):
+def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample_sets, transform=False, standardize=False):
     result = list()
     for i in tqdm(sample_size_list, desc='Completed'):
         if standardize == True:
-            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+            samples = dm.get_st_samples(dists, nr_sample_sets, i, transform = transform)
         else:
-            samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+            samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         original_d, original_std = w_distance(samples)
         for j in nr_moments_list:
             moments_df = dem.get_moments(samples, j)
@@ -85,13 +85,13 @@ def plot_cv_moments(df):
 #####################################################
 #                   KDE and EDF                     #
 #####################################################
-def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample, method, transform=False, standardize=False):
+def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_sets, method, transform=False, standardize=False):
     result = list()
     for i in tqdm(sample_size_list, desc ='% completed'):
         if standardize == True:
-            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)   
+            samples = dm.get_st_samples(dists, nr_sample_sets, i, transform = transform)   
         else:
-            samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+            samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         
         original_d, original_std = w_distance(samples)
         for j in num_steps_list:
@@ -127,15 +127,15 @@ def plot_cv_numsteps_samplesize(df):
 #####################################################
 #                        ECF                        #
 #####################################################            
-def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample, transform = False, standardize=False):
+def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, transform = False, standardize=False):
     result = list()
     for i in tqdm(sample_size_list):
         if standardize == True:
-            samples = dm.get_st_samples(dists, nr_sample, i, transform = transform)
+            samples = dm.get_st_samples(dists, nr_sample_sets, i, transform = transform)
             st_samples = dm.standardize_df(samples)
             original_d, original_std = w_distance(st_samples)
         else:
-            samples = dm.get_samples(dists, nr_sample, i, transform = transform)
+            samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
             original_d, original_std = w_distance(samples)
             
         for j in num_steps_list:
