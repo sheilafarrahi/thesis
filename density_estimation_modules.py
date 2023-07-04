@@ -13,12 +13,17 @@ def get_default_plt_colors():
 #            methods of moments          #
 ##########################################
 
-def get_moments(df, nr_moments):
+def get_moments(df, nr_moments, label= True):
     # df: a dictionary containing samples of different distribution including preselected parameters
     # nr_moments: desired number of moments to be calculated
-    X = df.iloc[:,:-1]
-    y = df.iloc[:,-1]
+    if label == True:
+        X = df.iloc[:,:-1]
+        y = df.iloc[:,-1]
+    else:
+        X = df
+        
     m1 = np.mean(X, axis=1)
+    
     m1_df = pd.DataFrame(m1, columns=['m1'])
     m1_df = m1_df.reset_index(drop=True)
     moments = np.zeros((len(X), nr_moments - 1)) # array to store moments after mean
@@ -28,7 +33,8 @@ def get_moments(df, nr_moments):
 
     moments_df = pd.DataFrame(moments, columns=['m'+str(j) for j in range(2,i+1)])
     df = pd.concat([m1_df,moments_df], axis=1)
-    df['label'] = y.values.tolist()
+    if label == True:
+        df['label'] = y.values.tolist()
     return df
 
 

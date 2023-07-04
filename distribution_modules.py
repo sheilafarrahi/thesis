@@ -7,33 +7,26 @@ import random
 
 def get_bounded_distribution():
     bounded_distributions = {
-        "arcsine" : stats.arcsine(),
+        #"arcsine" : stats.arcsine(),
+        #"beta_1_2" : stats.beta(a=1, b=2),
+        #"powerlaw_0.3" : stats.powerlaw(a=0.3),
+        #"trapezoid_0.3_0.8" : stats.trapezoid(c=0.3, d=0.8),
+        #"traing_0.3" : stats.triang(c=0.3),
+        #"uniform" : stats.uniform()
         "beta_1_2" : stats.beta(a=1, b=2),
-        "powerlaw_0.3" : stats.powerlaw(a=0.3),
-        "trapezoid_0.3_0.8" : stats.trapezoid(c=0.3, d=0.8),
-        "traing_0.3" : stats.triang(c=0.3),
-        "uniform" : stats.uniform()
-    }
-    return bounded_distributions
-
-
-def get_bounded_distribution_v2():
-    bounded_distributions = {
-        "beta_1_1" : stats.beta(a=1, b=1),
-        "beta_1_2" : stats.beta(a=1, b=2),
-        "beta_2_1" : stats.beta(a=2, b=1),
-        "beta_3_1" : stats.beta(a=3, b=1),
         "beta_1_3" : stats.beta(a=1, b=3),
-        
-    }
+        "beta_1_4" : stats.beta(a=1, b=4),
+        "beta_1_5" : stats.beta(a=1, b=5)    }
     return bounded_distributions
 
 def get_heavytail_distribution():
     heavytail_distributions = {
         "cauchy" : stats.halfcauchy(),
-        "lognorm_1.5" : stats.lognorm(s=1.5),
-        "pareto_1.5" : stats.pareto(b=1.5),
-        "weibull_min_0.4" : stats.weibull_min(c=0.4)
+        "lognorm_1" : stats.lognorm(s=1),
+        "lognorm_2" : stats.lognorm(s=2),
+        "pareto_0.5" : stats.pareto(b=1.5),
+        #"pareto_1.5" : stats.pareto(b=1.5),
+        #"weibull_min_0.4" : stats.weibull_min(c=0.4)
     }
     return heavytail_distributions
 
@@ -41,7 +34,7 @@ def get_heavytail_distribution():
 def get_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10, transform=False):
     # distributions_dict: a dictinary containing different distribution including preselected parameters
     # nr_sample_sets: number of sample sets
-    # sample size: size of each sample
+    # sample size: size of each sample set
     samples_dict = dict()
     for i, (name, distr) in enumerate(distributions_dict.items()):
         samples = distr.rvs(size=(nr_sample_sets, sample_size), random_state=random_state)
