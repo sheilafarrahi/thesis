@@ -53,6 +53,20 @@ def get_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10
         df = df.append(df_sample, ignore_index=True)
     return df
 
+def get_samples_flex(distributions_dict, nr_sample_sets, sample_size, transform=False):
+    df = pd.DataFrame()
+    samples = list()
+    labels = list()
+    for i, (name, distr) in enumerate(distributions_dict.items()):
+        for j in range(nr_sample_sets):
+            sample = distr.rvs(random.randint(1,sample_size))
+            samples.append(np.log1p(sample)) if transform == True else samples.append(sample) 
+            labels.append(name)
+    df['data'] = samples
+    df['len'] = df['data'].apply(len)
+    df['label'] = labels
+    return df
+
 def standardize_df(df):
     # standardize the given df by deducting row mean from each row and divide it by the std
     st_df = pd.DataFrame().reindex_like(df)
@@ -114,14 +128,14 @@ def get_modes(nr_modes, init_mode):
     # generate a vector with n (nr_modes) elements to be uses as mode in get_multimodal function
     modes = list()
     for i in range(nr_modes):
-        modes.append(init_mode + i * random.uniform(1, 1.5))
+        modes.append(init_mode + i * random.uniform(2, 2.5))
     return modes
 
 def get_vars(nr_modes):
     # generate a vector with n (nr_modes) elements to be uses as variance in get_multimodal function
     var = list()
     for i in range(nr_modes):
-        var.append(random.uniform(0, 0.1))
+        var.append(random.uniform(0.02, 0.2))
     return var
 
 def get_multimodal(nr_modes, nr_sample_sets, sample_size):
@@ -136,9 +150,29 @@ def get_multimodal(nr_modes, nr_sample_sets, sample_size):
         for j in range(nr_modes):
             sample_ = stats.cauchy.rvs(size = sample_size_[j], loc = modes[j], scale = np.sqrt(var[j]))
             for k in range(len(sample_)): # switch negative values with mean to avoid negative values
-                if sample_[k] < 0:
+                if abs(sample_[k]-modes[j]) > (np.sqrt(var[j]) * 6):
                     sample_[k] = modes[j]
             sample.extend(sample_)
-
         samples.append(sample)
+        
     return samples, sample_size_, modes, var
+
+
+def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
+    samples = list()
+    label_list = list()
+    mean_list = list()
+    var_list = list()
+
+    for i in range(nr_mm_dist):
+        label = 'Dist '+ str(i+1)
+        samples_, weights, modes, var = get_multimodal(nr_modes, nr_sample, sample_size)
+        samples.extend(samples_)
+        mean_list.append(modes)
+        var_list.append(var)
+        df = pd.DataFrame(samples)
+        for j in range(nr_sample):
+            label_list.append(label)
+
+    df['label']=label_list
+    return df, mean_list, var_list

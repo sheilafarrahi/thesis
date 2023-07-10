@@ -104,6 +104,17 @@ def svm_model(data, test_size, n_folds):
     result_df = pd.DataFrame(result)
     return result_df
 
+def svm_train_err(data):
+    nr_moments_list = data['nr_moments'].unique()
+    sample_size_list = data['sample_size'].unique()
+    
+    for i in sample_size_list:
+        for j in nr_moments_list:
+            row = data.loc[(data['sample_size']==5) & (data['nr_moments']==2)]
+            clf_svm = SVC(kernel='rbf', decision_function_shape = 'ovr', class_weight='balanced', C=row['cost'], gamma=row['gamma'])
+       
+            
+            
 def lr_model(data, test_size, n_folds):
     C = [0.01, 0.25, 1, 5, 10]
     result = list() # empty list to store the result
@@ -198,7 +209,7 @@ def plot_cv_moments(clf_result):
 #####################################################
 #                   KDE and EDF                     #
 #####################################################
-def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_sets, n_folds, method, classifier, transform=False):
+def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_sets, n_folds, test_size, method, classifier, transform=False):
     # cv_config: array of configuration for cross validation [test size, #splits for cross validation]
     # method = kde or edf
     # classifier: integer value, 1: svm, 2: Ridge Regression
@@ -221,10 +232,10 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_se
                 #df = dem.get_edf(samples, x)
                 df = dem.get_edf_v2(samples, y)
             if classifier == 1:
-                result_ = svm_model(df, n_folds)
+                result_ = svm_model(df, test_size, n_folds)
              
             elif classifier == 2:
-                result_ = rr_model(df, n_folds)
+                result_ = lr_model(df, test_size, n_folds)
             result_['num_steps'] = j
             result_['sample_size'] = i
             result = result.append(result_, ignore_index = True)
