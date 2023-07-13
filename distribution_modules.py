@@ -53,17 +53,17 @@ def get_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10
         df = df.append(df_sample, ignore_index=True)
     return df
 
-def get_samples_flex(distributions_dict, nr_sample_sets, sample_size, transform=False):
+def get_samples_flex(distributions_dict, nr_sample_sets, sample_size, min_nr_sample=1):
     df = pd.DataFrame()
     samples = list()
     labels = list()
     for i, (name, distr) in enumerate(distributions_dict.items()):
         for j in range(nr_sample_sets):
-            sample = distr.rvs(random.randint(1,sample_size))
-            samples.append(np.log1p(sample)) if transform == True else samples.append(sample) 
+            sample = distr.rvs(random.randint(min_nr_sample,sample_size))
+            samples.append(sample) 
             labels.append(name)
-    df['data'] = samples
-    df['len'] = df['data'].apply(len)
+    df['sample_set'] = samples
+    df['len'] = df['sample_set'].apply(len)
     df['label'] = labels
     return df
 
@@ -154,7 +154,6 @@ def get_multimodal(nr_modes, nr_sample_sets, sample_size):
                     sample_[k] = modes[j]
             sample.extend(sample_)
         samples.append(sample)
-        
     return samples, sample_size_, modes, var
 
 
@@ -175,4 +174,4 @@ def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
             label_list.append(label)
 
     df['label']=label_list
-    return df, mean_list, var_list
+    return df

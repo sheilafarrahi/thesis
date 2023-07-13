@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_sc
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score
+from functools import partial
 
 import distribution_modules as dm
 import density_estimation_modules as dem
@@ -47,7 +48,7 @@ def prepare_data(train_data, test_data):
     return X, y, X_train_scaled, X_test_scaled, y_train, y_test
 
 
-def svm_model_old(data, n_folds):
+def svm_model(data, n_folds):
     X = data.iloc[:, :-1]
     y = data.iloc[:,-1]
     result = list() # empty list to store the result
@@ -83,7 +84,7 @@ def svm_model_old(data, n_folds):
     result_df = pd.DataFrame(result)
     return result_df
 
-def svm_model(data, test_size, n_folds):
+def svm_model_not_in_use(data, test_size, n_folds):
     result = list() # empty list to store the result
     train, test = split_data(data, test_size)
     X, y, X_train_scaled, X_test_scaled, y_train, y_test = prepare_data(train, test)
@@ -115,7 +116,7 @@ def svm_train_err(data):
        
             
             
-def lr_model(data, test_size, n_folds):
+def lr_model_not_in_use(data, test_size, n_folds):
     C = [0.01, 0.25, 1, 5, 10]
     result = list() # empty list to store the result
     train, test = split_data(data, test_size)
@@ -131,7 +132,7 @@ def lr_model(data, test_size, n_folds):
     return result_df
     
     
-def rr_model_old(data, n_folds):
+def rr_model(data, n_folds):
     X = data.iloc[:, :-1]
     y = data.iloc[:,-1]
     result = list() # empty list to store the result
@@ -152,9 +153,9 @@ def rr_model_old(data, n_folds):
 
         alphas = np.logspace(-2, 2, 10)
         clf_rr = RidgeClassifierCV(alphas)
-        clf_rr.fit(X_train, y_train)
+        clf_rr.fit(X_train_scaled, y_train)
         alpha= clf_rr.alpha_
-        y_pred = clf_rr.predict(X_test)
+        y_pred = clf_rr.predict(X_test_scaled)
         score = accuracy_score(y_test, y_pred)
         result.append( dict(zip(['score','alpha'],[score, alpha])))
     result_df = pd.DataFrame(result)
@@ -178,10 +179,48 @@ def cv_samplesize_moments(sample_size_list, nr_moments_list, dists, nr_sample_se
         for j in nr_moments_list:
             moments_df = dem.get_moments(samples, j)
             if classifier == 1:
-                result_ = svm_model(moments_df, test_size, n_folds)
+                #result_ = svm_model(moments_df, test_size, n_folds)
+                result_ = svm_model(moments_df, n_folds)
             elif classifier == 2:
-                result_ = lr_model(moments_df, test_size, n_folds)
-                
+                #result_ = lr_model(moments_df, test_size, n_folds)
+                result_ = rr_model(moments_df, n_folds)
+            result_['nr_moments'] = j
+            result_['sample_size'] = i
+            result = result.append(result_, ignore_index = True)
+    return result
+
+def cv_samplesize_moments_mm(sample_size_list, nr_moments_list, nr_sample_sets, nr_mm_dist, nr_modes, n_folds, test_size, classifier):
+    result = pd.DataFrame()
+    for i in tqdm(sample_size_list, desc='Completed'):
+        samples = dm.get_multimodal_dists(nr_mm_dist, nr_sample_sets, nr_modes, i)
+        for j in nr_moments_list:
+            moments_df = dem.get_moments(samples, j)
+            if classifier == 1:
+                #result_ = svm_model(moments_df, test_size, n_folds)
+                result_ = svm_model(moments_df, n_folds)
+            elif classifier == 2:
+                #result_ = lr_model(moments_df, test_size, n_folds)
+                result_ = rr_model(moments_df, n_folds)
+            result_['nr_moments'] = j
+            result_['sample_size'] = i
+            result = result.append(result_, ignore_index = True)
+    return result
+
+def cv_samplesize_moments_flex(sample_size_list, nr_moments_list, dists, nr_sample_sets, n_folds, test_size, classifier, transform = False):
+    result = pd.DataFrame()
+    for i in tqdm(sample_size_list, desc='Completed'):
+        samples = dm.get_samples_flex(dists, nr_sample_sets, i)
+        for j in nr_moments_list:
+            partial_moments = partial(dem.get_moments_partial, nr_moments=j)
+            moments_res = samples['sample_set'].apply(partial_moments)
+            moments_df = pd.DataFrame(moments_res.tolist())
+            moments_df['label'] = samples['label']
+            if classifier == 1:
+                #result_ = svm_model(moments_df, test_size, n_folds)
+                result_ = svm_model(moments_df, n_folds)
+            elif classifier == 2:
+                #result_ = lr_model(moments_df, test_size, n_folds)
+                result_ = rr_model(moments_df, n_folds)
             result_['nr_moments'] = j
             result_['sample_size'] = i
             result = result.append(result_, ignore_index = True)
@@ -193,7 +232,6 @@ def plot_cv_moments(clf_result):
         # sample_size: list of different sample sizes to test
         # nr_moments: list of different number of moments to test
         # acc: list of accuracy
-
     ax = sns.lineplot(data = clf_result, x='nr_moments',y='score', hue='sample_size', ci = 'sd', legend='full', palette='muted')
     ax.xaxis.set_major_locator(plt.MultipleLocator(2))
     ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
@@ -215,8 +253,38 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_se
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
     result = pd.DataFrame()
-    for i in tqdm(sample_size_list, desc ='% completed'):
+    for i in tqdm(sample_size_list, desc ='Completed'):
         samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
+        for j in num_steps_list:
+            if transform == False:
+                x = np.linspace(0,1,j)
+            elif transform == True:
+                perc_95 = np.percentile(samples.iloc[:,:-1],95)
+                x = np.linspace(0,perc_95,j)
+            if method == 'kde':
+                df = dem.get_kde(samples, x)
+            elif method == 'edf':
+                #df = dem.get_edf(samples, x)
+                y = np.linspace(0.01,1,j)
+                df = dem.get_edf_v2(samples, y)
+            if classifier == 1:
+                result_ = svm_model(df, test_size, n_folds)
+            elif classifier == 2:
+                result_ = lr_model(df, test_size, n_folds)
+            result_['num_steps'] = j
+            result_['sample_size'] = i
+            result = result.append(result_, ignore_index = True)
+    return result
+
+
+def cv_numsteps_samplesize_flex(sample_size_list, num_steps_list, dists, nr_sample_sets, n_folds, test_size, method, classifier, transform=False):
+    result = pd.DataFrame()
+    if method=='kde':
+        min_nr_sample = 2
+    else:
+        min_nr_sample=1
+    for i in tqdm(sample_size_list, desc ='Completed'):
+        samples = dm.get_samples_flex(dists, nr_sample_sets, i, min_nr_sample, transform=transform)
         for j in num_steps_list:
             if transform == False:
                 x = np.linspace(0,1,j)
@@ -225,22 +293,25 @@ def cv_numsteps_samplesize(sample_size_list, num_steps_list, dists, nr_sample_se
                 perc_95 = np.percentile(samples.iloc[:,:-1],95)
                 x = np.linspace(0,perc_95,j)
                 y = np.linspace(0.01,1,j)
-                
             if method == 'kde':
-                df = dem.get_kde(samples, x)
+                partial_kde = partial(dem.get_kde_partial, x=x)
+                kde_res = samples['sample_set'].apply(partial_kde)
+                df = pd.DataFrame(kde_res.tolist())
+                df['label'] = samples['label']
             elif method == 'edf':
-                #df = dem.get_edf(samples, x)
-                df = dem.get_edf_v2(samples, y)
+                partial_edf = partial(dem.get_edf_partial, y=y)
+                edf_res = samples['sample_set'].apply(partial_edf)
+                df = pd.DataFrame(edf_res.tolist())
+                df['label'] = samples['label']
             if classifier == 1:
                 result_ = svm_model(df, test_size, n_folds)
-             
             elif classifier == 2:
                 result_ = lr_model(df, test_size, n_folds)
             result_['num_steps'] = j
             result_['sample_size'] = i
             result = result.append(result_, ignore_index = True)
-            
     return result
+
 
 def plot_cv_numsteps_samplesize(clf_result, method):
     ax = sns.lineplot(data = clf_result, x='num_steps',y='score', hue='sample_size', ci = 'sd', legend='full', palette='muted')
@@ -254,8 +325,6 @@ def plot_cv_numsteps_samplesize(clf_result, method):
     plt.ylim(0,1.1)
     plt.show()
     
-
-
     
 #####################################################
 #                        ECF                        #
@@ -265,7 +334,7 @@ def cv_ecf(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, 
     # classifier: integer value, 1: svm, 2: Ridge Regression
     # transform: set true for heavytail distribution
     result = pd.DataFrame()
-    for i in tqdm(sample_size_list):
+    for i in tqdm(sample_size_list, desc ='Completed'):
         samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         for j in num_steps_list:
             for k in max_t_list:

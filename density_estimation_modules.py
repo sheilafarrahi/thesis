@@ -21,18 +21,17 @@ def get_moments(df, nr_moments, label= True):
         y = df.iloc[:,-1]
     else:
         X = df
-        
     m1 = np.mean(X, axis=1)
-    
-    m1_df = pd.DataFrame(m1, columns=['m1'])
+    #m1_df = pd.DataFrame(m1, columns=['m1'])
+    m1_df = pd.DataFrame(m1)
     m1_df = m1_df.reset_index(drop=True)
     moments = np.zeros((len(X), nr_moments - 1)) # array to store moments after mean
-
     for i in range(2,nr_moments+1): #calculate from 2nd moment
         moments[:,i-2] = stats.moment(X, i, axis=1)
-
-    moments_df = pd.DataFrame(moments, columns=['m'+str(j) for j in range(2,i+1)])
+    #moments_df = pd.DataFrame(moments, columns=['m'+str(j) for j in range(2,i+1)])
+    moments_df = pd.DataFrame(moments)
     df = pd.concat([m1_df,moments_df], axis=1)
+    df.columns = ['m'+str(j) for j in range(1,nr_moments+1)]
     if label == True:
         df['label'] = y.values.tolist()
     return df
@@ -53,6 +52,13 @@ def get_moments_no_label(df, nr_moments):
     df = pd.concat([m1_df,moments_df], axis=1)
     return df
 
+def get_moments_partial(df,nr_moments):
+    moments = list()
+    m1 = np.mean(df)
+    moments.append(m1)
+    for i in range(2,nr_moments+1): #calculate from 2nd moment
+        moments.append(stats.moment(df, i))
+    return moments
 
 def get_histogram_of_moments(df):
     distrubtions = df['label'].unique()
@@ -90,6 +96,9 @@ def get_kde(df, x):
 
     return kde_df 
     
+def get_kde_partial(df, x):
+    kde = stats.gaussian_kde(df)
+    return kde(x)
 
 def get_kde_plot(df, x):
     names = df.iloc[:,-1].unique()
@@ -120,6 +129,9 @@ def get_edf(df, x):
     edf_df['label'] = df.iloc[:,-1].tolist()
     return edf_df 
 
+def get_edf_partial(df,y):
+    ecdf = ECDF(df)
+    return ecdf(y)
 
 def get_edf_plot(df, x):
     names = df.iloc[:,-1].unique()
@@ -180,6 +192,12 @@ def get_ecf(df, t):
 
     return ecf_df
 
+def get_ecf_partial(df,t):
+    ecf = np.mean(np.exp(1j * np.outer(df, t).astype(float)), axis=0)
+    ecf_r = np.real(ecf)
+    ecf_i = np.imag(ecf)
+    ecf_parts =np.concatenate([ecf_r,ecf_i])
+    return ecf_parts
 
 def get_ecf_plot(df, t):
     names = df.iloc[:,-1].unique()
