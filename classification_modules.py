@@ -409,13 +409,14 @@ def grid_search_svm(data, n_folds, cost, gamma):
 
                 result.append( dict(zip(['fold','cost','gamma','loss'],[i, c, g, loss])))
                 result_df = pd.DataFrame(result)
+    return result_df
                 
-    res_agg = result_df.groupby(['cost','gamma'], as_index=False).agg({'loss':['mean','std']})
-    res_agg.columns = ['cost','gamma','mean','std']
-    min_err_index = np.argmin(res_agg['mean'])
-    best_model_cost = res_agg['cost'][min_err_index]
-    best_model_gamma = res_agg['gamma'][min_err_index]
-    return best_model_cost, best_model_gamma
+    #res_agg = result_df.groupby(['cost','gamma'], as_index=False).agg({'loss':['mean','std']})
+    #res_agg.columns = ['cost','gamma','mean','std']
+    #min_err_index = np.argmin(res_agg['mean'])
+    #best_model_cost = res_agg['cost'][min_err_index]
+    #best_model_gamma = res_agg['gamma'][min_err_index]
+    #return best_model_cost, best_model_gamma
 
 def svm_model_m(data, test_size, cost, gamma):
     train, test = split_data(data, test_size)

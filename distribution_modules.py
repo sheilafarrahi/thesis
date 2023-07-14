@@ -4,6 +4,7 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 import random
+#random.seed(10)
 
 def get_bounded_distribution():
     bounded_distributions = {
@@ -79,8 +80,8 @@ def standardize_df(df):
     return st_df
 
 def min_max_scaled_df(df, lower_bound = 5, upper_bound = 95):
-    min_ = np.percentile(samples.iloc[:,:-1],lower_bound)
-    max_ = np.percentile(samples.iloc[:,:-1],upper_bound)
+    min_ = np.percentile(df.iloc[:,:-1],lower_bound)
+    max_ = np.percentile(df.iloc[:,:-1],upper_bound)
     scaler = MinMaxScaler(feature_range=(min_, max_))
     norm = scaler.fit_transform(df.iloc[:,:-1])
     norm_df = pd.DataFrame(norm)
@@ -109,6 +110,7 @@ def plot_histograms_of_samples(df):
 
 def get_sample_size(n, sample_size):
     # Divides the sample_size into n parts to get number of samples per each gaussian distribution
+    #random.seed(10)
     random_list = [random.randint(1,30) for i in range(n)]
     sample_size_ = []
     weights=[]
@@ -128,6 +130,7 @@ def get_modes(nr_modes, init_mode):
     # generate a vector with n (nr_modes) elements to be uses as mode in get_multimodal function
     modes = list()
     for i in range(nr_modes):
+        #random.seed(10)
         modes.append(init_mode + i * random.uniform(2, 2.5))
     return modes
 
@@ -135,6 +138,7 @@ def get_vars(nr_modes):
     # generate a vector with n (nr_modes) elements to be uses as variance in get_multimodal function
     var = list()
     for i in range(nr_modes):
+        #random.seed(i)
         var.append(random.uniform(0.02, 0.2))
     return var
 
@@ -149,7 +153,7 @@ def get_multimodal(nr_modes, nr_sample_sets, sample_size):
         sample = list()
         for j in range(nr_modes):
             sample_ = stats.cauchy.rvs(size = sample_size_[j], loc = modes[j], scale = np.sqrt(var[j]))
-            for k in range(len(sample_)): # switch negative values with mean to avoid negative values
+            for k in range(len(sample_)):
                 if abs(sample_[k]-modes[j]) > (np.sqrt(var[j]) * 6):
                     sample_[k] = modes[j]
             sample.extend(sample_)
