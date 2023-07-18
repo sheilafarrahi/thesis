@@ -389,34 +389,51 @@ def grid_search_svm(data, n_folds, cost, gamma):
     result = list()
     for c in cost:
         for g in gamma:
+            cv_error = list()
             for i in range(n_folds):
                 X_train = X.iloc[train_index_list[i]]
                 y_train = y.iloc[train_index_list[i]]
-                y_train_reset_index = y_train.reset_index(drop=True)
+                X_test = X.iloc[test_index_list[i]]
+                y_test = y.iloc[test_index_list[i]]
+                y_test = y_test.reset_index(drop=True)
+
                 # standardize the data
                 scaler_train = StandardScaler()
                 scaler_train.fit(X_train)
                 X_train_scaled = scaler_train.transform(X_train)
+                X_test_scaled = scaler_train.transform(X_test)
+
                 clf_svm = SVC(kernel='rbf', probability=True, decision_function_shape = 'ovr', class_weight='balanced', C=c, gamma=g)
                 clf_svm.fit(X_train_scaled, y_train)
-                prob = clf_svm.predict_proba(X_train_scaled)
-                loss = 0
-                for j in range(len(prob)):
-                    k = prob.argmax(axis=1)[j]
-                    l = prob.max(axis=1)[j]
-                    if clf_svm.classes_[k] != y_train_reset_index[j]:
-                        loss = -np.log(l) + loss
+                prob = clf_svm.predict_proba(X_test_scaled)
+                pred  = clf_svm.predict(X_test_scaled)
 
-                result.append( dict(zip(['fold','cost','gamma','loss'],[i, c, g, loss])))
-                result_df = pd.DataFrame(result)
-    return result_df
-                
-    #res_agg = result_df.groupby(['cost','gamma'], as_index=False).agg({'loss':['mean','std']})
-    #res_agg.columns = ['cost','gamma','mean','std']
-    #min_err_index = np.argmin(res_agg['mean'])
-    #best_model_cost = res_agg['cost'][min_err_index]
-    #best_model_gamma = res_agg['gamma'][min_err_index]
-    #return best_model_cost, best_model_gamma
+                # cross entropy loss
+                loss = 0
+                for j in range(len(y_test)):
+                    prob_row=prob[j]
+                    for k in range(len(clf_svm.classes_)):
+                        if y_test[j]==clf_svm.classes_[k]:
+                            loss = loss - np.log(prob_row[k])
+                loss = loss/len(y_test)
+                cv_error.append(loss)
+            #cv_error_mean=np.mean(cv_error)
+            #cv_error_sd=np.std(cv_error)
+                result.append( dict(zip(['cv_error','cost','gamma'],[loss, c, g])))   
+    result_df = pd.DataFrame(result)
+    
+    # find the best model, using one standard error rule
+    res_agg = result.groupby(['cost','gamma'], as_index=False).agg({'cv_error':['mean','std']})
+    res_agg.columns = ['cost','gamma','mean','std']
+    min_err_index = np.argmin(res_agg['mean'])
+    threshold = res_agg['mean'][min_err_index] + res_agg['std'][min_err_index]
+    models = res_agg.loc[res_agg['mean']<=threshold]
+    models_cost =list(models['cost'])
+    best_cost = models_cost [0]
+    models_gamma =list(models['gamma'])
+    best_gamma = models_gamma [0]
+    
+    return best_cost, best_gamma, result_df
 
 def svm_model_m(data, test_size, cost, gamma):
     train, test = split_data(data, test_size)
