@@ -390,7 +390,7 @@ def grid_search_svm(data, n_folds, cost, gamma):
     for c in cost:
         for g in gamma:
             cv_error = list()
-            for i in range(n_folds):
+            for i in range(n_folds): 
                 X_train = X.iloc[train_index_list[i]]
                 y_train = y.iloc[train_index_list[i]]
                 X_test = X.iloc[test_index_list[i]]
@@ -417,35 +417,51 @@ def grid_search_svm(data, n_folds, cost, gamma):
                             loss = loss - np.log(prob_row[k])
                 loss = loss/len(y_test)
                 cv_error.append(loss)
-            #cv_error_mean=np.mean(cv_error)
-            #cv_error_sd=np.std(cv_error)
                 result.append( dict(zip(['cv_error','cost','gamma'],[loss, c, g])))   
     result_df = pd.DataFrame(result)
     
     # find the best model, using one standard error rule
-    res_agg = result.groupby(['cost','gamma'], as_index=False).agg({'cv_error':['mean','std']})
+    res_agg = result_df.groupby(['cost','gamma'], as_index=False).agg({'cv_error':['mean','std']})
     res_agg.columns = ['cost','gamma','mean','std']
+    res_agg['se']=res_agg['std']/np.sqrt(n_folds)
     min_err_index = np.argmin(res_agg['mean'])
-    threshold = res_agg['mean'][min_err_index] + res_agg['std'][min_err_index]
+    threshold = res_agg['mean'][min_err_index] + res_agg['se'][min_err_index]
     models = res_agg.loc[res_agg['mean']<=threshold]
     models_cost =list(models['cost'])
-    best_cost = models_cost [0]
     models_gamma =list(models['gamma'])
-    best_gamma = models_gamma [0]
     
-    return best_cost, best_gamma, result_df
+    return models_cost [0], models_gamma [0], result_df
 
-def svm_model_m(data, test_size, cost, gamma):
-    train, test = split_data(data, test_size)
-    X, y, X_train_scaled, X_test_scaled, y_train, y_test = prepare_data(train, test)
+def svm_model_m(data, n_folds, cost_vector, gamma_vector):
+    X = data.iloc[:, :-1]
+    y = data.iloc[:,-1]
+    train_index_list, test_index_list = split_n_folds(data, n_folds)
     result = list()
-    clf_svm = SVC(kernel='rbf', C=cost, gamma=gamma)
-    clf_svm.fit(X_train_scaled, y_train)
-    y_pred = clf_svm.predict(X_test_scaled)
-    score = accuracy_score(y_test, y_pred)
-    result.append( dict(zip(['score','cost','gamma'],[score, cost, gamma])))
-    result_df = pd.DataFrame(result)
-    return result_df
+    for i in range(n_folds): 
+        train = data.iloc[train_index_list[i]]
+        test = data.iloc[test_index_list[i]]
+        
+        X_train = X.iloc[train_index_list[i]]
+        y_train = y.iloc[train_index_list[i]]
+        
+        X_test = X.iloc[test_index_list[i]]
+        y_test = y.iloc[test_index_list[i]]
+        y_test = y_test.reset_index(drop=True)
+    
+        cost, gamma, result_df = grid_search_svm(train, n_folds, cost_vector, gamma_vector)
+    
+        scaler_train = StandardScaler()
+        scaler_train.fit(X_train)
+        X_train_scaled = scaler_train.transform(X_train)
+        X_test_scaled = scaler_train.transform(X_test)
+        
+        clf_svm = SVC(kernel='rbf', C=cost, gamma=gamma)
+        clf_svm.fit(X_train_scaled, y_train)
+        y_pred = clf_svm.predict(X_test_scaled)
+        score = accuracy_score(y_test, y_pred)
+        result.append(score)
+    
+    return result
 
 
 def grid_search_lr(data, n_folds, C):
@@ -502,11 +518,10 @@ def cv_samplesize_moments_svm(sample_size_list, nr_moments_list, dists, nr_sampl
         samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
         for j in nr_moments_list:
             moments_df = dem.get_moments(samples, j)
-            cost, gamma = grid_search_svm(moments_df, n_folds, cost_vector, gamma_vector)
-            result_ = svm_model_m(moments_df, test_size, cost, gamma)
-            result_['nr_moments'] = j
-            result_['sample_size'] = i
-            result = result.append(result_, ignore_index = True)
+            score = svm_model_m(moments_df, n_folds, cost_vector, gamma_vector)
+            result_ = dict(zip(['score','nr_moments','sample_size'],[score, j, i]))
+            result_df = pd.DataFrame(result_)
+            result= result.append(result_df)
     return result
 
 
