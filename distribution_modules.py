@@ -88,8 +88,8 @@ def min_max_scaled_df(df, lower_bound = 5, upper_bound = 95):
     normalized_df = pd.concat([norm_df, df.iloc[:,-1]],axis = 1)
     return normalized_df
 
-def get_st_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10, transform=False):
-    df = get_samples(distributions_dict, nr_sample_sets, sample_size, transform = transform)
+def get_st_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10):
+    df = get_samples(distributions_dict, nr_sample_sets, sample_size)
     st_df = standardize_df(df)
     return st_df
 
@@ -168,7 +168,7 @@ def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
     var_list = list()
 
     for i in range(nr_mm_dist):
-        label = 'Dist '+ str(i+1)
+        label = 'Dist '+ str(i+1).zfill(2)
         samples_, weights, modes, var = get_multimodal(nr_modes, nr_sample, sample_size)
         samples.extend(samples_)
         mean_list.append(modes)

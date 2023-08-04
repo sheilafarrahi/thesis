@@ -76,7 +76,6 @@ def get_histogram_of_moments(df):
 ##########################################
 #        Kernel density estimation       #
 ##########################################
-
 def get_kde(df, x):
     # samples_dict: a dictinary containing samples from different distribution including preselected parameters
     # x: array to do kde
@@ -116,7 +115,6 @@ def get_kde_plot(df, x):
 ##########################################
 #      Empirical density estimation      #
 ##########################################
-
 def get_edf(df, x):
     # df: a dataframe containing samples from different distribution
     # x: array to calculate empirical cdf for it's values
@@ -189,10 +187,10 @@ def get_ecf(df, t):
 
     ecf_df = pd.DataFrame(ecf_list)
     ecf_df['label'] = df.iloc[:,-1].tolist()
-
     return ecf_df
 
-def get_ecf_partial(df,t):
+def get_ecf_partial(df, max_t, steps):
+    t = np.linspace(0.001, int(max_t), int(steps))
     ecf = np.mean(np.exp(1j * np.outer(df, t).astype(float)), axis=0)
     ecf_r = np.real(ecf)
     ecf_i = np.imag(ecf)
