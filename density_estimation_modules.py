@@ -52,7 +52,7 @@ def get_moments_no_label(df, nr_moments):
     df = pd.concat([m1_df,moments_df], axis=1)
     return df
 
-def get_moments_partial(df,nr_moments):
+def get_moments_partial(df, nr_moments):
     moments = list()
     m1 = np.mean(df)
     moments.append(m1)

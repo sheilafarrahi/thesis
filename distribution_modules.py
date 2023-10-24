@@ -8,12 +8,6 @@ import random
 
 def get_bounded_distribution():
     bounded_distributions = {
-        #"arcsine" : stats.arcsine(),
-        #"beta_1_2" : stats.beta(a=1, b=2),
-        #"powerlaw_0.3" : stats.powerlaw(a=0.3),
-        #"trapezoid_0.3_0.8" : stats.trapezoid(c=0.3, d=0.8),
-        #"traing_0.3" : stats.triang(c=0.3),
-        #"uniform" : stats.uniform()
         "beta_1_2" : stats.beta(a=1, b=2),
         "beta_1_3" : stats.beta(a=1, b=3),
         "beta_1_4" : stats.beta(a=1, b=4),
@@ -22,20 +16,20 @@ def get_bounded_distribution():
 
 def get_heavytail_distribution():
     heavytail_distributions = {
-        "cauchy" : stats.halfcauchy(),
+        "half_cauchy" : stats.halfcauchy(),
         "lognorm_1" : stats.lognorm(s=1),
         "lognorm_2" : stats.lognorm(s=2),
-        "pareto_0.5" : stats.pareto(b=1.5),
-        #"pareto_1.5" : stats.pareto(b=1.5),
-        #"weibull_min_0.4" : stats.weibull_min(c=0.4)
+        "pareto_1.5" : stats.pareto(scale=1, b=1.5)
     }
     return heavytail_distributions
 
         
 def get_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10, transform=False):
+    # generate multi-sets with elements from given distributions
     # distributions_dict: a dictinary containing different distribution including preselected parameters
-    # nr_sample_sets: number of sample sets
-    # sample size: size of each sample set
+    # nr_sample_sets: refers to number of multi-sets
+    # sample size: number of elements in each multi-set
+    # transform = True does a log transformation on the samples
     samples_dict = dict()
     for i, (name, distr) in enumerate(distributions_dict.items()):
         samples = distr.rvs(size=(nr_sample_sets, sample_size), random_state=random_state)
@@ -55,6 +49,10 @@ def get_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10
     return df
 
 def get_samples_flex(distributions_dict, nr_sample_sets, sample_size, min_nr_sample=1):
+    # generate multi-sets with varying number of elements
+    # distributions_dict: a dictinary containing different distribution including preselected parameters
+    # nr_sample_sets: refers to number of multi-sets
+    # sample size: number of elements in each multi-set
     df = pd.DataFrame()
     samples = list()
     labels = list()
@@ -89,11 +87,11 @@ def min_max_scaled_df(df, lower_bound = 5, upper_bound = 95):
     return normalized_df
 
 def get_st_samples(distributions_dict, nr_sample_sets, sample_size, random_state=10):
+    # generate standardized samples
     df = get_samples(distributions_dict, nr_sample_sets, sample_size)
     st_df = standardize_df(df)
     return st_df
 
-# dont check this
 def plot_histograms_of_samples(df):
     dists = df['label'].unique()
     for dist in dists:
@@ -103,14 +101,13 @@ def plot_histograms_of_samples(df):
         for i in range(len(df_dist)):
             sample = df_dist.iloc[i,:]
             ax.hist(sample, density=True, histtype='stepfilled', bins='auto', alpha=0.1)
-            ax.set_title('Samples from %s' %dist)
-            plt.ylim(0,3)
-            plt.xlim(0,10)
+            ax.set_title('Samples drawn from %s' %dist)
+            plt.ylim(0,6)
+            plt.xlim(0,1)
             
 
 def get_sample_size(n, sample_size):
     # Divides the sample_size into n parts to get number of samples per each gaussian distribution
-    #random.seed(10)
     random_list = [random.randint(1,30) for i in range(n)]
     sample_size_ = []
     weights=[]
@@ -138,7 +135,6 @@ def get_vars(nr_modes):
     # generate a vector with n (nr_modes) elements to be uses as variance in get_multimodal function
     var = list()
     for i in range(nr_modes):
-        #random.seed(i)
         var.append(random.uniform(0.02, 0.2))
     return var
 
@@ -148,7 +144,6 @@ def get_multimodal(nr_modes, nr_sample_sets, sample_size):
     sample_size_ = get_sample_size(nr_modes, sample_size)
     modes= get_modes(nr_modes, 1)
     var = get_vars(nr_modes)
-
     for i in range(nr_sample_sets):
         sample = list()
         for j in range(nr_modes):
@@ -166,7 +161,6 @@ def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
     label_list = list()
     mean_list = list()
     var_list = list()
-
     for i in range(nr_mm_dist):
         label = 'Dist '+ str(i+1).zfill(2)
         samples_, weights, modes, var = get_multimodal(nr_modes, nr_sample, sample_size)
@@ -176,6 +170,5 @@ def get_multimodal_dists(nr_mm_dist, nr_sample, nr_modes, sample_size):
         df = pd.DataFrame(samples)
         for j in range(nr_sample):
             label_list.append(label)
-
     df['label']=label_list
     return df

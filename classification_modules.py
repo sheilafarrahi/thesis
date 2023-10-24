@@ -108,7 +108,6 @@ def lr_model(data, n_folds):
         score = accuracy_score(y_test, y_pred)
         result.append( dict(zip(['score','alpha'],[score, alpha])))
     result_df = pd.DataFrame(result)
-    
     return result_df
         
 
@@ -152,11 +151,14 @@ def grid_search_svm(data, n_folds, cost, gamma):
                 pred  = clf_svm.predict(X_test_scaled)
                 # cross entropy loss
                 loss = 0
+                one_hot_matrix = list()
+                for l in range(len(y_test)):
+                    one_hot_matrix.append(list((y_test[l] == clf_svm.classes_ )*1))
+                loss = 0
                 for j in range(len(y_test)):
-                    prob_row=prob[j]
-                    for k in range(len(clf_svm.classes_)):
-                        if y_test[j]==clf_svm.classes_[k]:
-                            loss = loss - np.log(prob_row[k])
+                    prob_row = prob[j]
+                    loss = loss - np.log(sum(one_hot_matrix[j]*prob_row))
+                         
                 loss = loss/len(y_test)
                 cv_error.append(loss)
                 result.append( dict(zip(['cv_error','cost','gamma'],[loss, c, g])))   
@@ -170,9 +172,6 @@ def grid_search_svm(data, n_folds, cost, gamma):
     models = res_agg.loc[res_agg['mean']<=threshold]
     models_cost =list(models['cost'])
     models_gamma =list(models['gamma'])
-    
-    # takes smallest gamma....check 
-    
     return models_cost[0], models_gamma[0], result_df
 
 def svm_model_m(data, n_folds, cost_vector, gamma_vector):
@@ -231,17 +230,13 @@ def grid_search_lr(data, n_folds, C):
             for l in range(len(y_test)):
                 one_hot_matrix.append(list((y_test[l] == clf_lr.classes_ )*1))
             loss = 0
-            acc =0
             for j in range(len(y_test)):
                 prob_row = prob[j]
                 loss = loss - np.log(sum(one_hot_matrix[j]*prob_row))
-                if y_test[j] == pred[j]:
-                    acc = acc +1
 
             loss = loss/len(y_test)
-            acc = acc / len(y_test)
             cv_error.append(loss)
-            result.append( dict(zip(['cv_error','lambda','acc'],[loss, 1/c,acc]))) 
+            result.append( dict(zip(['cv_error','lambda'],[loss, 1/c]))) 
     result_df = pd.DataFrame(result)
     # find the best model, using one standard error rule
     res_agg = result_df.groupby(['lambda'], as_index=False).agg({'cv_error':['mean','std']})
@@ -536,12 +531,11 @@ def cv_numsteps_samplesize_lr_mm(sample_size_list, num_steps_list, nr_sample_set
 
 def plot_cv_numsteps_samplesize_v2(clf_result):
     sample_size_list = clf_result['sample_size'].unique()
-    clf_result['nr_features'] = clf_result['nr_steps'] + 1
     fig, ax = plt.subplots()
     for i in range(len(sample_size_list)):
         data = clf_result.loc[clf_result['sample_size']==sample_size_list[i]]
-        plt.plot(data['nr_features'], data['mean'], label=sample_size_list[i])
-        plt.fill_between(data['nr_features'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
+        plt.plot(data['nr_steps'], data['mean'], label=sample_size_list[i])
+        plt.fill_between(data['nr_steps'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
 
     plt.legend(title='Input Size',loc='lower left', ncol=3)
     plt.grid(color='#DDDDDD')
@@ -685,21 +679,19 @@ def cv_ecf_lr_mm(sample_size_list, max_t_list, num_steps_list, nr_sample_sets, n
 
 def plot_cv_ecf(clf_result):
     sample_size_list = clf_result['sample_size'].unique()
-    clf_result['nr_features'] = clf_result['nr_steps'] + 1
-    sns.set_style('whitegrid',{'grid.color':'#DDDDDD'})
     for i in (clf_result['max_t'].unique()):
         fig, ax = plt.subplots()
-        sns.set_style('whitegrid',{'grid.color':'#DDDDDD'})
         for j in range(len(sample_size_list)):
             data = clf_result.loc[(clf_result['max_t']==i) & (clf_result['sample_size']==sample_size_list[j])]
-            plt.plot(data['nr_features'], data['mean'], label=sample_size_list[j])
-            plt.fill_between(data['nr_features'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
-        ax.legend(loc='lower left', ncol=3, title='Input size')
+            plt.plot(data['nr_steps'], data['mean'], label=sample_size_list[j])
+            plt.fill_between(data['nr_steps'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
+        plt.legend(loc='lower left', ncol=3, title='Input size')
+        plt.grid(color='#DDDDDD')
         ax.xaxis.set_major_locator(plt.MultipleLocator(2))
         ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
-        plt.title('for t in [0.001,%i]' %i)
+        ax.set_yticks(list(np.linspace(0,1,11)))
+        #plt.title('for t in [0.001,%i]' %i)
         plt.ylabel('Accuracy')
         plt.xlabel('Number of constructed features')
-        #plt.grid(color='#DDDDDD')
         plt.ylim(0,1.1)
         plt.show()
