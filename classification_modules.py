@@ -383,13 +383,13 @@ def plot_cv_moments_v2(clf_result):
         plt.plot(data['nr_features'], data['mean'], label=sample_size_list[i])
         plt.fill_between(data['nr_features'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
 
-    plt.legend(title='Input Size',loc='lower left', ncol=3)
+    plt.legend(title='Number of Elements in Multi-sets(p)',loc='lower left', ncol=3)
     plt.grid(color='#DDDDDD')
     ax.xaxis.set_major_locator(plt.MultipleLocator(2))
     ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
     ax.set_yticks(list(np.linspace(0,1,11)))
     plt.ylim(0,1.1)
-    plt.xlabel('Number of Constructed Features')
+    plt.xlabel('Number of Constructed Features(m)')
     plt.ylabel('Accuracy')
     plt.show()
 
@@ -537,20 +537,20 @@ def plot_cv_numsteps_samplesize_v2(clf_result):
         plt.plot(data['nr_steps'], data['mean'], label=sample_size_list[i])
         plt.fill_between(data['nr_steps'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
 
-    plt.legend(title='Input Size',loc='lower left', ncol=3)
+    plt.legend(title='Number of Elements in Multi-sets(p)',loc='lower left', ncol=3)
     plt.grid(color='#DDDDDD')
     ax.xaxis.set_major_locator(plt.MultipleLocator(2))
     ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
     ax.set_yticks(list(np.linspace(0,1,11)))
     plt.ylim(0,1.1)
-    plt.xlabel('Number of Constructed Features')
+    plt.xlabel('Number of Constructed Features(m)')
     plt.ylabel('Accuracy')
     plt.show()
     
 ###########################################################
 #                           ECF                           #
 ###########################################################
-def cv_ecf_svm(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, n_folds, test_size, cost_vector, gamma_vector, transform = False, flex=False):
+def cv_ecf_svm(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, n_folds, test_size, cost_vector, gamma_vector, transform = False, flex=False, standardize=False):
     result = pd.DataFrame()
     for i in tqdm(sample_size_list, desc ='Completed'):
         if flex == True:
@@ -566,7 +566,10 @@ def cv_ecf_svm(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_se
                     result_df = pd.DataFrame(result_)
                     result = result.append(result_df)
         else:
-            samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
+            if standardize == True:
+                samples = dm.get_st_samples(dists, nr_sample_sets, i)
+            else:
+                samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
             for j in num_steps_list:
                 for k in max_t_list:
                     t = np.linspace(0.001, k, j)
@@ -581,56 +584,8 @@ def cv_ecf_svm(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_se
     return res_agg  
 
 
-def cv_ecf_svm_mm(sample_size_list,max_t_list, num_steps_list, nr_sample_sets, nr_mm_dist, nr_modes, n_folds, test_size, cost_vector, gamma_vector):
-    result = pd.DataFrame()
-    for i in tqdm(sample_size_list, desc='Completed'):
-        samples = dm.get_multimodal_dists(nr_mm_dist, nr_sample_sets, nr_modes, i)
-        for j in num_steps_list:
-            for k in max_t_list:
-                t = np.linspace(0.001, k, j)
-                df = dem.get_ecf(samples, t)
-                score = svm_model_m(df, n_folds, cost_vector, gamma_vector)
-                result_ = dict(zip(['score','nr_steps','sample_size','max_t'],[score, j, i, k]))
-                result_df = pd.DataFrame(result_)
-                result = result.append(result_df)
-    res_agg = result.groupby(['nr_steps','sample_size','max_t'], as_index=False).agg({'score':['mean','std']})
-    res_agg.columns = ['nr_steps','sample_size','max_t','mean','std']
-    res_agg['se']=res_agg['std']/np.sqrt(n_folds)
-    return res_agg
 
-
-    result = pd.DataFrame()
-    for i in tqdm(sample_size_list, desc ='Completed'):
-        if flex == True:
-            samples = dm.get_samples_flex(dists, nr_sample_sets, i, 2)
-            for j in num_steps_list:
-                for k in max_t_list:
-                    t = np.linspace(0.001, k, j)
-                    partial_ecf = partial(dem.get_ecf_partial, x=x)
-                    ecf_res = samples['sample_set'].apply(partial_ecf)
-                    df = pd.DataFrame(ecf_res.tolist())
-                    df['label'] = samples['label']                
-                    score = lr_model_m(df, n_folds, C_vector)
-                    result_ = dict(zip(['score','nr_steps','sample_size','max_t'],[score, j, i, k]))
-                    result_df = pd.DataFrame(result_)
-                    result= result.append(result_df)
-        else:
-            samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
-            for j in num_steps_list:
-                for k in max_t_list:
-                    t = np.linspace(0.001, k, j)
-                    df = dem.get_ecf(samples, x)
-                    score = lr_model_m(df, n_folds, C_vector)
-                    result_ = dict(zip(['score','nr_steps','sample_size','max_t'],[score, j, i, k]))
-                    result_df = pd.DataFrame(result_)
-                    result = result.append(result_df)
-    res_agg = result.groupby(['nr_steps','sample_size','max_t'], as_index=False).agg({'score':['mean','std']})
-    res_agg.columns = ['nr_steps','sample_size','max_t','mean','std']
-    res_agg['se']=res_agg['std']/np.sqrt(n_folds)
-    return res_agg
-
-
-def cv_ecf_lr(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, n_folds, test_size, C_vector, transform = False, flex=False):
+def cv_ecf_lr(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_sets, n_folds, test_size, C_vector, transform = False, flex=False, standardize=False):
     result = pd.DataFrame()
     for i in tqdm(sample_size_list, desc ='Completed'):
         if flex == True:
@@ -646,7 +601,10 @@ def cv_ecf_lr(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_set
                     result_df = pd.DataFrame(result_)
                     result = result.append(result_df)
         else:
-            samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
+            if standardize == True:
+                samples = dm.get_st_samples(dists, nr_sample_sets, i)
+            else:
+                samples = dm.get_samples(dists, nr_sample_sets, i, transform = transform)
             for j in num_steps_list:
                 for k in max_t_list:
                     t = np.linspace(0.001, k, j)
@@ -659,6 +617,23 @@ def cv_ecf_lr(sample_size_list, max_t_list, num_steps_list, dists, nr_sample_set
     res_agg.columns = ['nr_steps','sample_size','max_t','mean','std']
     res_agg['se']=res_agg['std']/np.sqrt(n_folds)
     return res_agg 
+def cv_ecf_svm_mm(sample_size_list,max_t_list, num_steps_list, nr_sample_sets, nr_mm_dist, nr_modes, n_folds, test_size, cost_vector, gamma_vector):
+    result = pd.DataFrame()
+    for i in tqdm(sample_size_list, desc='Completed'):
+        samples = dm.get_multimodal_dists(nr_mm_dist, nr_sample_sets, nr_modes, i)
+        for j in num_steps_list:
+            for k in max_t_list:
+                t = np.linspace(np.pi*4, k, j)
+                df = dem.get_ecf(samples, t)
+                score = svm_model_m(df, n_folds, cost_vector, gamma_vector)
+                result_ = dict(zip(['score','nr_steps','sample_size','max_t'],[score, j, i, k]))
+                result_df = pd.DataFrame(result_)
+                result = result.append(result_df)
+    res_agg = result.groupby(['nr_steps','sample_size','max_t'], as_index=False).agg({'score':['mean','std']})
+    res_agg.columns = ['nr_steps','sample_size','max_t','mean','std']
+    res_agg['se']=res_agg['std']/np.sqrt(n_folds)
+    return res_agg
+
 
 def cv_ecf_lr_mm(sample_size_list, max_t_list, num_steps_list, nr_sample_sets, nr_mm_dist, nr_modes, n_folds, test_size, C_vector):
     result = pd.DataFrame()
@@ -685,13 +660,13 @@ def plot_cv_ecf(clf_result):
             data = clf_result.loc[(clf_result['max_t']==i) & (clf_result['sample_size']==sample_size_list[j])]
             plt.plot(data['nr_steps'], data['mean'], label=sample_size_list[j])
             plt.fill_between(data['nr_steps'], data['mean']-data['se'], data['mean']+data['se'], alpha=0.2)
-        plt.legend(loc='lower left', ncol=3, title='Input size')
+        plt.legend(loc='lower left', ncol=3, title='Number of Elements in Multi-sets(p)')
         plt.grid(color='#DDDDDD')
         ax.xaxis.set_major_locator(plt.MultipleLocator(2))
         ax.yaxis.set_major_locator(plt.MultipleLocator(0.1))
         ax.set_yticks(list(np.linspace(0,1,11)))
         #plt.title('for t in [0.001,%i]' %i)
         plt.ylabel('Accuracy')
-        plt.xlabel('Number of constructed features')
+        plt.xlabel('Number of Constructed Features(m)')
         plt.ylim(0,1.1)
         plt.show()

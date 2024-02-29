@@ -83,7 +83,7 @@ def get_kde(df, x):
     
     for i in range(len(df)):
         X = df.iloc[i,:-1]
-        kde = stats.gaussian_kde(list(X))
+        kde = stats.gaussian_kde(list(X), bw_method='silverman')
         if type(x)==list:
             values = x[i]
         else:
